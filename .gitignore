@@ -1,0 +1,71 @@
+# Environment & Secrets
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Node & Frontend
+node_modules/
+frontend/dist/
+frontend/build/
+.npm
+*.tsbuildinfo
+
+# Application Storage & Local Data
+backend/storage/
+uploads/
+chroma/
+*.db
+*.sqlite
+*.sqlite3
+
+# Models & Weights Cache
+models/
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.onnx
+.cache/
+huggingface/
+
+# Logs & OS files
+logs/
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
