@@ -4,7 +4,7 @@
 |---|---|---|---|---|---|---|---|
 | M01 | Initial project setup | `chore: initialize IntelliDocs AI` | Completed | 2026-11-18 | 5 unit tests passed (Health, Config, Error handling) | `45c1d11` | Pending (`gh auth login` required) |
 | M02 | Frontend development | `feat: implement frontend` | Completed | 2026-11-18 | Vite production build, Vitest RTL suite passed | `3ecc9e1` | Pending (`gh auth login` required) |
-| M03 | Backend development | `feat: implement backend APIs` | Planned | - | - | - | - |
+| M03 | Backend development | `feat: implement backend APIs` | Completed | 2026-11-18 | All 7 API router & OpenAPI tests passed | Pending | Pending (`gh auth login` required) |
 | M04 | Authentication | `feat: add user authentication` | Planned | - | - | - | - |
 | M05 | Database integration | `feat: integrate PostgreSQL database` | Planned | - | - | - | - |
 | M06 | Document upload & extraction | `feat: add document processing` | Planned | - | - | - | - |

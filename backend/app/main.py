@@ -7,6 +7,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.app.core.config import settings
 from backend.app.core.logging import logger
+from backend.app.api.api import api_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -25,6 +26,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register API v1 Routers
+app.include_router(api_router)
 
 
 @app.middleware("http")
