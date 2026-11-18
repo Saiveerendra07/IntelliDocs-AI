@@ -2,7 +2,7 @@
 
 | Milestone | Title | Target Commit Message | Status | Date | Tests Run | Commit Hash | Remote Push Verified |
 |---|---|---|---|---|---|---|---|
-| M01 | Initial project setup | `chore: initialize IntelliDocs AI` | Completed | 2026-11-18 | 5 unit tests passed (Health, Config, Error handling) | Pending | Pending (`gh auth login` required) |
+| M01 | Initial project setup | `chore: initialize IntelliDocs AI` | Completed | 2026-11-18 | 5 unit tests passed (Health, Config, Error handling) | `45c1d11` | Pending (`gh auth login` required) |
 | M02 | Frontend development | `feat: implement frontend` | Planned | - | - | - | - |
 | M03 | Backend development | `feat: implement backend APIs` | Planned | - | - | - | - |
 | M04 | Authentication | `feat: add user authentication` | Planned | - | - | - | - |
