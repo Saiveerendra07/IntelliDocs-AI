@@ -9,7 +9,7 @@
 | M05 | Database integration | `feat: integrate PostgreSQL database` | Completed | 2026-11-18 | All 16 SQLAlchemy models, cascade deletion & consistency check tests passed | `703fc7b` | Yes (verified on origin/main) |
 | M06 | Document upload & extraction | `feat: add document processing` | Completed | 2026-11-19 | 7 document processing tests passed (PDF, DOCX, PPTX, TXT, CSV, Chunker, Pipeline); 20/20 backend tests passed | `1d37d58` | Yes (verified on origin/main) |
 | M07 | NLP preprocessing | `feat: implement NLP preprocessing` | Completed | 2026-11-19 | 4 NLP preprocessing tests passed (Syllables, Readability, Pipeline, Endpoints); 24/24 backend tests passed | `098005f` | Yes (verified on origin/main) |
-| M08 | Text summarization | `feat: implement text summarization` | Planned | - | - | - | - |
+| M08 | Text summarization | `feat: implement text summarization` | Completed | 2026-11-19 | 7 text summarization tests passed (Frequency, TF-IDF, TextRank, Abstractive Map-Reduce, ROUGE, APIs); 31/31 backend tests passed | `14f832b` | Yes (verified on origin/main) |
 | M09 | Keyword & topic extraction | `feat: add keyword extraction` | Planned | - | - | - | - |
 | M10 | Semantic search | `feat: add semantic search` | Planned | - | - | - | - |
 | M11 | RAG question answering | `feat: implement RAG question answering` | Planned | - | - | - | - |
