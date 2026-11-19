@@ -17,7 +17,7 @@
 | M13 | Interactive quiz system | `feat: implement quiz system` | Completed | 2026-11-19 | Quiz lifecycle, attempt tracking, real evaluation scoring, weak-topic diagnostics tests passed; 51/51 backend tests passed | `f446929` | Yes (verified on origin/main at f446929) |
 | M14 | Study assistant | `feat: add study assistant` | Completed | 2026-11-19 | Socratic inquiry, simplification, analogy generation, misconception checks, tutor API tests passed; 53/53 backend tests passed | `983ee2a` | Yes (verified on origin/main at 983ee2a) |
 | M15 | Flashcards | `feat: add flashcards` | Completed | 2026-11-19 | SuperMemo SM-2 algorithm, automatic extraction, review scheduling, and API tests passed; 56/56 backend tests passed | `73c105b` | Yes (verified on origin/main at 73c105b) |
-| M16 | Learning analytics | `feat: implement learning analytics` | Planned | - | - | - | - |
+| M16 | Learning analytics | `feat: implement learning analytics` | Completed | 2026-11-19 | Genuine DB telemetry, topic accuracy & weak topic detection, multi-user isolation tests passed; 58/58 backend tests passed | `bbe0c23` | Yes (verified on origin/main at bbe0c23) |
 | M17 | Full integration | `feat: complete full integration` | Planned | - | - | - | - |
 | M18 | Testing & Evaluation | `test: complete integration testing` | Planned | - | - | - | - |
 | M19 | Documentation & Finalization | `docs: finalize project documentation` | Planned | - | - | - | - |
