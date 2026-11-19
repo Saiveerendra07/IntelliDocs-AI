@@ -8,7 +8,7 @@
 | M04 | Authentication | `feat: add user authentication` | Completed | 2026-11-18 | Registration, JWT, 401 & 404 multi-user isolation tests passed | `c9ced98` | Yes (verified on origin/main) |
 | M05 | Database integration | `feat: integrate PostgreSQL database` | Completed | 2026-11-18 | All 16 SQLAlchemy models, cascade deletion & consistency check tests passed | `703fc7b` | Yes (verified on origin/main) |
 | M06 | Document upload & extraction | `feat: add document processing` | Completed | 2026-11-19 | 7 document processing tests passed (PDF, DOCX, PPTX, TXT, CSV, Chunker, Pipeline); 20/20 backend tests passed | `1d37d58` | Yes (verified on origin/main) |
-| M07 | NLP preprocessing | `feat: implement NLP preprocessing` | Planned | - | - | - | - |
+| M07 | NLP preprocessing | `feat: implement NLP preprocessing` | Completed | 2026-11-19 | 4 NLP preprocessing tests passed (Syllables, Readability, Pipeline, Endpoints); 24/24 backend tests passed | `098005f` | Yes (verified on origin/main) |
 | M08 | Text summarization | `feat: implement text summarization` | Planned | - | - | - | - |
 | M09 | Keyword & topic extraction | `feat: add keyword extraction` | Planned | - | - | - | - |
 | M10 | Semantic search | `feat: add semantic search` | Planned | - | - | - | - |
