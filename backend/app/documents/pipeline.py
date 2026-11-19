@@ -66,16 +66,20 @@ class DocumentPipeline:
             doc.processing_progress = 0.5
             self.db.commit()
 
-            # 3. Save DocumentPage records
+            # 3. Clean pages and save DocumentPage records
+            from backend.app.documents.cleaner import detect_repeated_lines, clean_page_lines
+            repeated_lines = detect_repeated_lines(pages_content, threshold=0.25)
+
             # Clear previous pages/chunks if reprocessing
             self.db.query(DocumentPage).filter(DocumentPage.document_id == doc.id).delete()
             self.db.query(DocumentChunk).filter(DocumentChunk.document_id == doc.id).delete()
 
             for p in pages_content:
+                cleaned_text, title, prose, code = clean_page_lines(p.text, repeated_lines)
                 page_rec = DocumentPage(
                     document_id=doc.id,
                     page_number=p.page_number,
-                    text=p.text,
+                    text=cleaned_text or p.text,
                     ocr_applied=p.ocr_applied,
                     tables_json=p.tables_json,
                 )

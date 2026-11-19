@@ -3,11 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Clock,
   CheckCircle2,
+  XCircle,
   Bookmark,
   ChevronLeft,
   ChevronRight,
   AlertCircle,
   Award,
+  Sparkles,
 } from 'lucide-react';
 import { quizApi } from '../api/quiz';
 
@@ -19,9 +21,10 @@ export const Quiz = () => {
   const [attemptId, setAttemptId] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState({}); // { [questionId]: selectedOption }
+  const [answers, setAnswers] = useState({}); // { [qId]: selectedOption }
+  const [locked, setLocked] = useState({}); // { [qId]: boolean }
   const [markedForReview, setMarkedForReview] = useState(new Set());
-  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes default
+  const [timeLeft, setTimeLeft] = useState(600);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -34,7 +37,6 @@ export const Quiz = () => {
         setQuestions(quizData.questions || []);
         setTimeLeft(quizData.time_limit_seconds || (quizData.questions?.length || 10) * 60);
 
-        // Start attempt
         const attempt = await quizApi.startAttempt(id);
         setAttemptId(attempt.id);
       } catch (err) {
@@ -46,7 +48,6 @@ export const Quiz = () => {
     initQuiz();
   }, [id]);
 
-  // Countdown timer
   useEffect(() => {
     if (timeLeft <= 0) {
       handleSubmitQuiz();
@@ -59,12 +60,20 @@ export const Quiz = () => {
   }, [timeLeft]);
 
   const currentQ = questions[currentIndex];
+  const isCurrentLocked = !!locked[currentQ?.id];
+  const currentSelected = answers[currentQ?.id];
 
   const handleSelectOption = (option) => {
-    if (!currentQ) return;
+    if (!currentQ || isCurrentLocked) return;
+
+    // Record answer and immediately lock this question to reveal feedback
     setAnswers((prev) => ({
       ...prev,
       [currentQ.id]: option,
+    }));
+    setLocked((prev) => ({
+      ...prev,
+      [currentQ.id]: true,
     }));
   };
 
@@ -84,14 +93,6 @@ export const Quiz = () => {
   const handleSubmitQuiz = async () => {
     if (submitting) return;
 
-    const unansweredCount = questions.length - Object.keys(answers).length;
-    if (unansweredCount > 0) {
-      const confirm = window.confirm(
-        `You have ${unansweredCount} unanswered questions. Are you sure you want to submit?`
-      );
-      if (!confirm) return;
-    }
-
     setSubmitting(true);
     try {
       const formattedResponses = questions.map((q) => ({
@@ -101,7 +102,7 @@ export const Quiz = () => {
       }));
 
       const timeTaken = (quiz?.time_limit_seconds || 600) - timeLeft;
-      const res = await quizApi.submitAttempt(attemptId, formattedResponses, Math.max(timeTaken, 1));
+      await quizApi.submitAttempt(attemptId, formattedResponses, Math.max(timeTaken, 1));
       navigate(`/attempts/${attemptId}/results`);
     } catch (err) {
       console.error('Quiz submission failed:', err);
@@ -130,18 +131,17 @@ export const Quiz = () => {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      {/* Quiz Top Bar with Title & Countdown Timer */}
+      {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-xl border border-slate-200/80 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard p-4 sm:px-6 shadow-sm">
         <div>
           <h1 className="text-lg font-bold text-slate-900 dark:text-white">
             {quiz?.title || 'Interactive Quiz'}
           </h1>
           <p className="text-xs text-slate-400">
-            {questions.length} questions • Server evaluated on submission
+            One question at a time • Instant feedback on click • Progress saved to database
           </p>
         </div>
 
-        {/* Countdown Timer Chip */}
         <div className="flex items-center gap-2 self-start sm:self-center rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 px-3 py-1.5 text-amber-700 dark:text-amber-300 font-mono text-sm font-bold">
           <Clock className="h-4 w-4" />
           <span>{formatTime(timeLeft)}</span>
@@ -149,8 +149,8 @@ export const Quiz = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Main Question Card (3 columns) */}
-        <div className="lg:col-span-3 rounded-xl border border-slate-200/80 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard p-6 md:p-8 shadow-sm flex flex-col justify-between min-h-[460px]">
+        {/* Main Question & Immediate Feedback Card */}
+        <div className="lg:col-span-3 rounded-xl border border-slate-200/80 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard p-6 md:p-8 shadow-sm flex flex-col justify-between min-h-[500px]">
           <div>
             {/* Question Progress Header */}
             <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
@@ -168,7 +168,7 @@ export const Quiz = () => {
               />
             </div>
 
-            {/* Question Text */}
+            {/* Question Stem */}
             <h2 className="text-base md:text-lg font-bold text-slate-900 dark:text-white leading-relaxed mb-6">
               {currentQ?.question}
             </h2>
@@ -176,35 +176,78 @@ export const Quiz = () => {
             {/* Options List */}
             <div className="space-y-3">
               {(currentQ?.options || ['True', 'False']).map((opt, i) => {
-                const isSelected = answers[currentQ.id] === opt;
+                const isSelected = currentSelected === opt;
+                const isCorrect = opt === currentQ?.correct_answer;
+
+                let optClass = 'border-slate-200 dark:border-surface-darkBorder bg-slate-50/40 dark:bg-slate-900/40 text-slate-800 dark:text-slate-200 hover:border-slate-300';
+                let iconClass = 'border-slate-300 dark:border-slate-600 text-slate-400';
+
+                if (isCurrentLocked) {
+                  if (isCorrect) {
+                    optClass = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 ring-1 ring-emerald-500 font-semibold';
+                    iconClass = 'border-emerald-500 bg-emerald-500 text-white';
+                  } else if (isSelected && !isCorrect) {
+                    optClass = 'border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-100 ring-1 ring-rose-500 font-semibold';
+                    iconClass = 'border-rose-500 bg-rose-500 text-white';
+                  } else {
+                    optClass = 'border-slate-200 dark:border-surface-darkBorder opacity-50 cursor-not-allowed';
+                  }
+                }
+
                 return (
                   <button
                     key={i}
+                    disabled={isCurrentLocked}
                     onClick={() => handleSelectOption(opt)}
-                    className={`w-full flex items-center gap-3 rounded-xl p-3.5 text-sm font-medium text-left border transition-all ${
-                      isSelected
-                        ? 'border-primary-600 bg-primary-50/70 text-primary-900 dark:bg-primary-950/50 dark:text-primary-200 ring-1 ring-primary-600'
-                        : 'border-slate-200 dark:border-surface-darkBorder bg-slate-50/40 dark:bg-slate-900/40 text-slate-800 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
-                    }`}
+                    className={`w-full flex items-center justify-between rounded-xl p-3.5 text-sm font-medium text-left border transition-all ${optClass}`}
                   >
-                    <div
-                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-all ${
-                        isSelected
-                          ? 'border-primary-600 bg-primary-600 text-white'
-                          : 'border-slate-300 dark:border-slate-600 text-slate-400'
-                      }`}
-                    >
-                      {String.fromCharCode(65 + i)}
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-all ${iconClass}`}>
+                        {String.fromCharCode(65 + i)}
+                      </div>
+                      <span>{opt}</span>
                     </div>
-                    <span>{opt}</span>
+
+                    {isCurrentLocked && isCorrect && (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 ml-2" />
+                    )}
+                    {isCurrentLocked && isSelected && !isCorrect && (
+                      <XCircle className="h-5 w-5 text-rose-600 shrink-0 ml-2" />
+                    )}
                   </button>
                 );
               })}
             </div>
+
+            {/* Immediate Feedback & Explanation Callout */}
+            {isCurrentLocked && (
+              <div className={`mt-6 rounded-xl p-4 border text-sm leading-relaxed transition-all duration-300 ${
+                currentSelected === currentQ?.correct_answer
+                  ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/50 dark:bg-emerald-950/30 text-emerald-950 dark:text-emerald-200'
+                  : 'border-rose-200 bg-rose-50/70 dark:border-rose-900/50 dark:bg-rose-950/30 text-rose-950 dark:text-rose-200'
+              }`}>
+                <div className="flex items-center gap-2 font-bold mb-1.5">
+                  {currentSelected === currentQ?.correct_answer ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <span>Correct Answer!</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-4 w-4 text-rose-600" />
+                      <span>Incorrect — Correct Answer: {currentQ?.correct_answer}</span>
+                    </>
+                  )}
+                </div>
+                <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300 mt-1">
+                  <strong>Explanation:</strong> {currentQ?.explanation || 'Directly grounded in source concepts.'}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Action Footer */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-8 mt-6 border-t border-slate-100 dark:border-surface-darkBorder">
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-6 mt-6 border-t border-slate-100 dark:border-surface-darkBorder">
             <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-600 dark:text-slate-400">
               <input
                 type="checkbox"
@@ -228,20 +271,21 @@ export const Quiz = () => {
 
               {currentIndex < questions.length - 1 ? (
                 <button
+                  disabled={!isCurrentLocked}
                   onClick={() => setCurrentIndex((idx) => Math.min(idx + 1, questions.length - 1))}
-                  className="inline-flex items-center gap-1 rounded-xl bg-primary-600 px-4 py-2 text-xs font-semibold text-white hover:bg-primary-700 shadow-sm"
+                  className="inline-flex items-center gap-1 rounded-xl bg-primary-600 px-4 py-2 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-40 shadow-sm transition-all"
                 >
-                  Next
+                  Next Question
                   <ChevronRight className="h-4 w-4" />
                 </button>
               ) : (
                 <button
+                  disabled={!isCurrentLocked || submitting}
                   onClick={handleSubmitQuiz}
-                  disabled={submitting}
-                  className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm transition-colors"
+                  className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-40 shadow-sm transition-colors"
                 >
                   <CheckCircle2 className="h-4 w-4" />
-                  Submit Quiz
+                  {submitting ? 'Submitting...' : 'Finish & View Results'}
                 </button>
               )}
             </div>
@@ -254,18 +298,21 @@ export const Quiz = () => {
             Question Navigator
           </h3>
 
-          {/* Grid buttons */}
           <div className="grid grid-cols-5 gap-2">
             {questions.map((q, idx) => {
               const isCurrent = idx === currentIndex;
-              const isAnswered = !!answers[q.id];
+              const ans = answers[q.id];
               const isMarked = markedForReview.has(q.id);
 
               let style = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
               if (isMarked) {
                 style = 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300';
-              } else if (isAnswered) {
-                style = 'bg-primary-600 text-white';
+              } else if (ans) {
+                if (ans === q.correct_answer) {
+                  style = 'bg-emerald-600 text-white font-bold';
+                } else {
+                  style = 'bg-rose-600 text-white font-bold';
+                }
               }
 
               if (isCurrent) {
@@ -284,15 +331,14 @@ export const Quiz = () => {
             })}
           </div>
 
-          {/* Navigator Legend */}
           <div className="pt-4 border-t border-slate-100 dark:border-surface-darkBorder space-y-2 text-[11px] text-slate-500 dark:text-slate-400">
             <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded bg-primary-600" />
-              <span>Answered</span>
+              <span className="h-3 w-3 rounded bg-emerald-600" />
+              <span>Correct Answer</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="h-3 w-3 rounded border-2 border-primary-500 bg-white" />
-              <span>Current</span>
+              <span className="h-3 w-3 rounded bg-rose-600" />
+              <span>Incorrect Answer</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded bg-amber-100 border border-amber-300" />
@@ -300,16 +346,16 @@ export const Quiz = () => {
             </div>
             <div className="flex items-center gap-2">
               <span className="h-3 w-3 rounded bg-slate-100 dark:bg-slate-800" />
-              <span>Not Answered</span>
+              <span>Unanswered</span>
             </div>
           </div>
 
           <button
             onClick={handleSubmitQuiz}
-            disabled={submitting}
-            className="w-full mt-4 rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 shadow-sm transition-colors"
+            disabled={submitting || answeredCount === 0}
+            className="w-full mt-4 rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-40 shadow-sm transition-colors"
           >
-            Submit Quiz
+            Submit Quiz Now
           </button>
         </div>
       </div>

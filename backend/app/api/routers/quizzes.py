@@ -163,6 +163,8 @@ def create_quiz(
             options=gq.options or [],
             type=gq.type,
             difficulty=gq.difficulty,
+            correct_answer=gq.correct_answer,
+            explanation=gq.explanation,
         )
         for qq, gq in qqs
     ]
@@ -249,6 +251,8 @@ def get_quiz(
             options=gq.options or [],
             type=gq.type,
             difficulty=gq.difficulty,
+            correct_answer=gq.correct_answer,
+            explanation=gq.explanation,
         )
         for qq, gq in qqs
     ]

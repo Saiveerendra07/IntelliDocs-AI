@@ -143,12 +143,19 @@ class TextRankSummarizer:
 def extract_definitions(text: str) -> List[Dict[str, str]]:
     """
     Extracts key term definitions matching academic explanation patterns.
+    Filters out discourse words, action verbs, and code artifacts.
     """
+    DISALLOWED_TERM_PREFIXES = (
+        "observe", "notice", "recall", "ensure", "these", "those", "this", "that",
+        "any", "all", "some", "such", "here", "there", "once", "note", "in", "let",
+        "if", "when", "where", "which", "what", "how", "why", "see", "o specifies"
+    )
+
     patterns = [
         r"([A-Z][a-zA-Z\s]{2,30})\s+is\s+defined\s+as\s+([^.]+)\.",
         r"([A-Z][a-zA-Z\s]{2,30})\s+refers\s+to\s+([^.]+)\.",
         r"([A-Z][a-zA-Z\s]{2,30})\s+is\s+a\s+subfield\s+of\s+([^.]+)\.",
-        r"([A-Z][a-zA-Z\s]{2,30})\s+is\s+(?:a|an)\s+([^.]+(?:technique|mechanism|architecture|framework|method|model)[^.]*)\.",
+        r"([A-Z][a-zA-Z\s]{2,30})\s+(?:is|are)\s+(?:a|an|the)?\s*([^.]+(?:technique|mechanism|architecture|framework|method|model|protocol|structure|relation|statement|clause|algorithm)[^.]*)\.",
     ]
 
     definitions = []
@@ -157,7 +164,14 @@ def extract_definitions(text: str) -> List[Dict[str, str]]:
         for term, meaning in matches:
             clean_term = term.strip().title()
             clean_meaning = meaning.strip()
-            if len(clean_term) > 2 and len(clean_meaning) > 5:
+            term_lower = clean_term.lower()
+
+            if any(term_lower.startswith(pfx) for pfx in DISALLOWED_TERM_PREFIXES):
+                continue
+            if "[" in clean_meaning or "]" in clean_meaning or "select " in clean_meaning.lower():
+                continue
+
+            if len(clean_term.split()) <= 4 and len(clean_meaning) > 10:
                 definitions.append({"term": clean_term, "definition": clean_meaning})
 
     # Deduplicate by term
@@ -171,11 +185,17 @@ def extract_definitions(text: str) -> List[Dict[str, str]]:
     return deduped[:10]
 
 
-def extract_key_points(sentences: List[str]) -> List[str]:
-    """Formats key takeaway bullet points from selected sentences."""
+def extract_key_points(content: Any, num_points: int = 5) -> List[str]:
+    """Formats key takeaway bullet points from sentences or raw text."""
+    if isinstance(content, str):
+        sentences = split_into_sentences(content, exclude_code=True)
+    else:
+        sentences = content or []
     points = []
     for s in sentences:
         clean = s.strip()
-        if len(clean) > 20:
+        if len(clean) > 20 and not any(clean.lower().startswith(pfx) for pfx in ("silberschatz", "korth", "observe", "notice")):
             points.append(clean)
-    return points[:8]
+        if len(points) >= num_points:
+            break
+    return points

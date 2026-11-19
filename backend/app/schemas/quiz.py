@@ -43,6 +43,8 @@ class QuizQuestionOut(BaseModel):
     options: Optional[List[str]] = []
     type: str
     difficulty: str
+    correct_answer: Optional[str] = None
+    explanation: Optional[str] = None
 
     class Config:
         from_attributes = True

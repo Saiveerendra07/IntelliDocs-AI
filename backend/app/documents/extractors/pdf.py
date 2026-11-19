@@ -67,7 +67,11 @@ class PDFExtractor(BaseExtractor):
 
             # Section title heuristic from first line if prominent
             lines = [l.strip() for l in raw_text.splitlines() if l.strip()]
-            section_title = lines[0][:80] if lines else None
+            section_title = None
+            for l in lines:
+                if not any(re.search(pat, l, re.I) for pat in ("silberschatz", "korth", "sudarshan", "copyright", "©", "db-book")):
+                    section_title = l[:80]
+                    break
 
             pages_content.append(PageContent(
                 page_number=page_num,

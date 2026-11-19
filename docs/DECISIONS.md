@@ -101,3 +101,34 @@ This document tracks all key technical, architectural, and design decisions made
   4. **Flashcard Hygiene**: Separated page references into a dedicated integer `source_page` field and stripped all `*Reference: Page*` strings from the flashcard back. Flashcards are capped to the top 10 highest-quality cards.
   5. **Presentation Chunking & PPTX Ingestion**: Fixed slide title duplication in `pptx.py`. In `chunking.py`, presentation slide boundaries are preserved as single-page chunks (`page_start == page_end`) to maintain 1:1 attribution for slide decks and avoid topic dilution.
   6. **Multi-Provider LLM Abstraction**: Implemented `backend/app/llm/` supporting `GEMINI_API_KEY` and `OPENAI_API_KEY` with explicit user notice (`provider_notice`) when external APIs are used, while maintaining 100% offline local synthesis.
+
+---
+
+## DEC-010: Document Cleaning Overhaul, Presentation Slide Chunking, Interactive One-by-One Quiz, and Grounded Multi-Model Synthesis
+- **Date**: 2026-11-19
+- **Status**: Accepted & Verified
+- **Context**: A comprehensive evaluation across diverse slide decks (`ch4.pdf` - 58 pages, `RIP_OSPF.pptx` - 18 pages, `Unit 4 Transport Layer.pptx` - 95 pages) revealed repetitive slide footers (e.g., Silberschatz copyright, author watermarks, slide numbering `4.x`) contaminating generated questions, flashcard fronts, and summary prose. Furthermore, users required an engaging one-by-one interactive quiz UI with instant feedback and answer locking, while LLM integration required robust JSON generation with local offline fallback.
+- **Decision**:
+  1. **Document Cleaning & Frequency-Based Header/Footer Removal (`cleaner.py`)**:
+     - Built `clean_pages()` calculating line frequency across all pages of a document. Any line occurring on $\ge 25\%$ of pages (such as copyright notices, publisher URLs, textbook titles, or course headers) is automatically removed as a repeated header/footer.
+     - Added regex cleaning for textbook patterns (`©Silberschatz, Korth and Sudarshan`, `Database System Concepts`, `See www.db-book.com`, `End of Chapter X`, solitary numbers and `X.Y` slide counters).
+     - Isolated SQL queries, code blocks (`CREATE`, `SELECT`, `FROM`, `WHERE`, `GRANT`, `REVOKE`, braces, semicolons) and tables into distinct chunk types so they are never parsed as prose definitions, never used as flashcard fronts, and preserved only as illustrative examples.
+     - Dropped low-information slides (title slides, tables of contents, blank/transitional slides) from QGen, flashcards, and summary generation.
+  2. **Presentation Slide Chunking & Attribution (`chunking.py`, `pdf.py`)**:
+     - Presentation slides are chunked 1:1 with single-page boundaries (`page_start == page_end`) with slide titles attached directly to chunk headers (`## Slide Title\n\nContent`).
+     - Sanitized `active_section` and `section_title` heuristics to explicitly reject header/copyright strings from becoming chunk topics.
+  3. **Interactive One-by-One Quiz UI (`Quiz.jsx`, `QuestionGen.jsx`)**:
+     - Upgraded the Quiz interface to a single-question interactive examination flow.
+     - Features instant visual feedback on option selection: correct answers glow green with checkmark icons, incorrect selections glow red with X icons, other options dim out.
+     - Enforced answer locking: once an option is selected, answers cannot be altered.
+     - Integrated grounded explanation callout with source page citations upon answering.
+     - Added a top question navigator chip bar showing current progress, answered status, and jump capabilities, with a detailed score summary breakdown upon completion.
+  4. **Grounded Multi-Model Synthesis & Fault-Tolerant Fallback (`gemini.py`, `qgen.py`, `flashcards.py`, `abstractive.py`)**:
+     - Updated LLM integration to use active Google Gemini models (`gemini-3.5-flash-lite`, `gemini-3.5-flash`, `gemini-3.8-flash`).
+     - Enforced strict JSON schema output with single-repair retry on malformed JSON.
+     - Increased generation token limits (`max_tokens=4000` for QGen, `3500` for Flashcards) to prevent truncated JSON tokens.
+     - Implemented graceful fallback on timeouts, HTTP 429/503 errors, or offline environments: cleanly delegates to local offline models (DistilBART, sentence-transformers, rule-based extractive) with zero user crashes and a visible provider banner.
+  5. **Structured Multi-Section Summarization & RAG Synthesis (`abstractive.py`, `rag.py`)**:
+     - Enforced standardized 5-part structured summaries across both Gemini and local offline summarizers: Overview, Main Topics & Key Mechanisms, Key Definitions, Key SQL / Code Examples, and Exam Focus.
+     - RAG Chat produces multi-tier structured answers (Direct Answer, Detailed Explanation, Document Example, and Sources), handles broad document overview intents, and rejects off-topic queries with 0 sources when relevance falls below calibrated cosine thresholds.
+

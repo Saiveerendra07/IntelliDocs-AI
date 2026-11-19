@@ -223,6 +223,13 @@ export const QuestionGen = () => {
 
         {/* Right Column: Generated Questions Cards */}
         <div className="lg:col-span-2 space-y-4">
+          {generatedQuestions.length > 0 && generatedQuestions[0]?.provider_notice && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50/70 dark:border-blue-900/40 dark:bg-blue-950/30 p-3 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 shrink-0 text-blue-600" />
+              <span>{generatedQuestions[0].provider_notice}</span>
+            </div>
+          )}
+
           {generatedQuestions.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-surface-darkBorder p-12 text-center bg-white/40 dark:bg-surface-darkCard/20">
               <HelpCircle className="h-12 w-12 text-primary-400 mb-3" />

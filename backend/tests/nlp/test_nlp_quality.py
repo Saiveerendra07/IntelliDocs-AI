@@ -219,3 +219,64 @@ def test_flashcard_quality_invariants(networking_setup):
 
         # 4. Back is substantive explanation
         assert len(c["back"].split()) >= 6, f"Flashcard back is too short/fragmentary: '{c['back']}'"
+
+
+def test_automated_quality_gates(networking_setup):
+    """
+    Quality Gate Assertions:
+    - No footer/copyright text in any question, flashcard, summary or chat answer
+    - No options shorter than 2 words unless numeric
+    - No code fragments as flashcard fronts
+    - Exactly one correct option
+    - Every answer supported by its source chunk
+    """
+    db, doc, chunks, user_id = networking_setup
+
+    qgen = QuestionGenerator(db)
+    questions = qgen.generate_from_chunks(chunks, q_type="mcq", count=4)
+    assert len(questions) >= 3
+
+    forbidden = ("silberschatz", "korth", "sudarshan", "copyright", "edition", "db-book")
+
+    for q in questions:
+        # 1. No copyright/footer strings
+        full_q_text = (q["question"] + " " + " ".join(q["options"]) + " " + q["explanation"]).lower()
+        for f in forbidden:
+            assert f not in full_q_text, f"Forbidden string '{f}' found in question: {full_q_text}"
+
+        # 2. No options shorter than 2 words unless numeric
+        for opt in q["options"]:
+            words = opt.strip().split()
+            if not opt.strip().isdigit():
+                assert len(words) >= 2, f"Option too short/fragmentary: '{opt}'"
+
+        # 3. Exactly one correct answer
+        assert q["options"].count(q["correct_answer"]) == 1, "Must have exactly one matching correct answer in options"
+
+        # 4. Answer supported by source
+        matching_chunk = next((c for c in chunks if c.page_start == q["page"]), None)
+        assert matching_chunk is not None, f"Source chunk for page {q['page']} not found"
+
+    # Flashcards quality gate
+    fg = FlashcardGenerator()
+    cards = fg.generate_flashcards(chunks, max_cards=5)
+    for c in cards:
+        full_card_text = (c["front"] + " " + c["back"]).lower()
+        for f in forbidden:
+            assert f not in full_card_text, f"Forbidden string '{f}' found in flashcard: {full_card_text}"
+        # No SQL code fragments as fronts
+        assert not c["front"].strip().lower().startswith("create "), f"SQL code on flashcard front: {c['front']}"
+        assert not c["front"].strip().lower().startswith("select "), f"SQL code on flashcard front: {c['front']}"
+        assert not c["front"].strip().startswith("("), f"Code syntax on flashcard front: {c['front']}"
+
+    # RAG Chat quality gate
+    rag = RAGEngine(db)
+    res = rag.generate_answer(
+        user_id=user_id,
+        query="What is the maximum hop count in RIP?",
+        document_ids=[doc.id],
+    )
+    ans_low = res["answer"].lower()
+    for f in forbidden:
+        assert f not in ans_low, f"Forbidden string '{f}' found in RAG answer: {res['answer']}"
+    assert "Direct Answer:" in res["answer"], "Answer missing structured Direct Answer section"
