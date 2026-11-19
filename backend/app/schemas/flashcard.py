@@ -9,7 +9,8 @@ class FlashcardGenerateRequest(BaseModel):
 
 
 class FlashcardReviewRequest(BaseModel):
-    difficulty_mark: str  # easy | medium | difficult
+    difficulty_mark: Optional[str] = "medium"  # easy | medium | difficult
+    rating: Optional[int] = None  # 0 to 5 SM-2 rating
 
 
 class FlashcardOut(BaseModel):
