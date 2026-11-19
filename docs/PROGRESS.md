@@ -16,7 +16,7 @@
 | M12 | Automatic question generation | `feat: add question generation` | Completed | 2026-11-19 | 3 QGen tests passed (7 question types, 3 difficulties, distractor uniqueness, API endpoints); 50/50 backend tests passed | `96d3b84` | Yes (verified on origin/main at 96d3b84) |
 | M13 | Interactive quiz system | `feat: implement quiz system` | Completed | 2026-11-19 | Quiz lifecycle, attempt tracking, real evaluation scoring, weak-topic diagnostics tests passed; 51/51 backend tests passed | `f446929` | Yes (verified on origin/main at f446929) |
 | M14 | Study assistant | `feat: add study assistant` | Completed | 2026-11-19 | Socratic inquiry, simplification, analogy generation, misconception checks, tutor API tests passed; 53/53 backend tests passed | `983ee2a` | Yes (verified on origin/main at 983ee2a) |
-| M15 | Flashcards | `feat: add flashcards` | Planned | - | - | - | - |
+| M15 | Flashcards | `feat: add flashcards` | Completed | 2026-11-19 | SuperMemo SM-2 algorithm, automatic extraction, review scheduling, and API tests passed; 56/56 backend tests passed | `73c105b` | Yes (verified on origin/main at 73c105b) |
 | M16 | Learning analytics | `feat: implement learning analytics` | Planned | - | - | - | - |
 | M17 | Full integration | `feat: complete full integration` | Planned | - | - | - | - |
 | M18 | Testing & Evaluation | `test: complete integration testing` | Planned | - | - | - | - |
