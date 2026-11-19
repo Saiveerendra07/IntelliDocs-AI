@@ -19,5 +19,5 @@
 | M15 | Flashcards | `feat: add flashcards` | Completed | 2026-11-19 | SuperMemo SM-2 algorithm, automatic extraction, review scheduling, and API tests passed; 56/56 backend tests passed | `73c105b` | Yes (verified on origin/main at 73c105b) |
 | M16 | Learning analytics | `feat: implement learning analytics` | Completed | 2026-11-19 | Genuine DB telemetry, topic accuracy & weak topic detection, multi-user isolation tests passed; 58/58 backend tests passed | `bbe0c23` | Yes (verified on origin/main at bbe0c23) |
 | M17 | Full integration | `feat: complete full integration` | Completed | 2026-11-19 | Full frontend Vite build, 15 screens verified, Vitest suite passed, demo database seeded in PostgreSQL & ChromaDB; 58/58 backend tests passed | `10ffbcc` | Yes (verified on origin/main at 10ffbcc) |
-| M18 | Testing & Evaluation | `test: complete integration testing` | Planned | - | - | - | - |
+| M18 | Testing & Evaluation | `test: complete integration testing` | Completed | 2026-11-19 | 58/58 backend pytest suite passed (50.02s), Vitest suite passed, live empirical evaluation harness executed | `8060c56` | Yes (verified on origin/main at 8060c56) |
 | M19 | Documentation & Finalization | `docs: finalize project documentation` | Planned | - | - | - | - |
