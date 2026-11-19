@@ -16,6 +16,7 @@ from backend.app.db.models.quiz import (
     QuizResponse,
 )
 from backend.app.nlp.qgen import QuestionGenerator
+from backend.app.services.quiz_service import QuizService
 from backend.app.schemas.quiz import (
     QuestionGenerateRequest,
     GeneratedQuestionOut,
@@ -60,7 +61,6 @@ def generate_questions(
     ).scalars().all()
 
     if not chunks:
-        # If document has no chunks yet, create synthetic default chunk from document path or empty text
         chunks = [
             DocumentChunk(
                 id=uuid.uuid4(),
@@ -142,55 +142,37 @@ def create_quiz(
     current_user: dict = Depends(get_current_user),
 ):
     user_id = uuid.UUID(str(current_user["id"]))
-    doc = db.execute(
-        select(Document).where(Document.id == req.document_id, Document.user_id == user_id)
-    ).scalar_one_or_none()
-    if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
+    service = QuizService(db)
+    try:
+        quiz = service.create_quiz(user_id=user_id, req=req)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
-    quiz_id = uuid.uuid4()
-    quiz = Quiz(
-        id=quiz_id,
-        user_id=user_id,
-        document_id=req.document_id,
-        title=req.title,
-        time_limit_seconds=req.time_limit_seconds,
-        config={},
-    )
-    db.add(quiz)
+    qqs = db.execute(
+        select(QuizQuestion, GeneratedQuestion)
+        .join(GeneratedQuestion, QuizQuestion.generated_question_id == GeneratedQuestion.id)
+        .where(QuizQuestion.quiz_id == quiz.id)
+        .order_by(QuizQuestion.position.asc())
+    ).all()
 
-    # Attach questions
-    questions_out = []
-    for pos, q_id in enumerate(req.question_ids):
-        gen_q = db.execute(
-            select(GeneratedQuestion).where(GeneratedQuestion.id == q_id, GeneratedQuestion.user_id == user_id)
-        ).scalar_one_or_none()
-        if gen_q:
-            qq = QuizQuestion(
-                id=uuid.uuid4(),
-                quiz_id=quiz_id,
-                generated_question_id=gen_q.id,
-                position=pos + 1,
-            )
-            db.add(qq)
-            questions_out.append(QuizQuestionOut(
-                id=gen_q.id,
-                position=pos + 1,
-                question=gen_q.question,
-                options=gen_q.options or [],
-                type=gen_q.type,
-                difficulty=gen_q.difficulty,
-            ))
-
-    db.commit()
-    db.refresh(quiz)
+    q_list = [
+        QuizQuestionOut(
+            id=gq.id,
+            position=qq.position,
+            question=gq.question,
+            options=gq.options or [],
+            type=gq.type,
+            difficulty=gq.difficulty,
+        )
+        for qq, gq in qqs
+    ]
 
     return QuizOut(
         id=quiz.id,
         document_id=quiz.document_id,
         title=quiz.title,
         time_limit_seconds=quiz.time_limit_seconds,
-        questions=questions_out,
+        questions=q_list,
         created_at=quiz.created_at,
     )
 
@@ -239,8 +221,8 @@ def list_quizzes(
     return result
 
 
-@router.post("/quizzes/{id}/attempts", response_model=QuizAttemptStartResponse)
-def start_quiz_attempt(
+@router.get("/quizzes/{id}", response_model=QuizOut)
+def get_quiz(
     id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
@@ -252,21 +234,52 @@ def start_quiz_attempt(
     if not quiz:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found.")
 
-    attempt = QuizAttempt(
-        id=uuid.uuid4(),
-        quiz_id=id,
-        user_id=user_id,
-        status="in_progress",
-    )
-    db.add(attempt)
-    db.commit()
-    db.refresh(attempt)
+    qqs = db.execute(
+        select(QuizQuestion, GeneratedQuestion)
+        .join(GeneratedQuestion, QuizQuestion.generated_question_id == GeneratedQuestion.id)
+        .where(QuizQuestion.quiz_id == quiz.id)
+        .order_by(QuizQuestion.position.asc())
+    ).all()
 
-    return QuizAttemptStartResponse(
-        id=attempt.id,
-        quiz_id=attempt.quiz_id,
-        started_at=attempt.started_at,
+    q_list = [
+        QuizQuestionOut(
+            id=gq.id,
+            position=qq.position,
+            question=gq.question,
+            options=gq.options or [],
+            type=gq.type,
+            difficulty=gq.difficulty,
+        )
+        for qq, gq in qqs
+    ]
+
+    return QuizOut(
+        id=quiz.id,
+        document_id=quiz.document_id,
+        title=quiz.title,
+        time_limit_seconds=quiz.time_limit_seconds,
+        questions=q_list,
+        created_at=quiz.created_at,
     )
+
+
+@router.post("/quizzes/{id}/attempts", response_model=QuizAttemptStartResponse)
+def start_quiz_attempt(
+    id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = uuid.UUID(str(current_user["id"]))
+    service = QuizService(db)
+    try:
+        attempt = service.start_attempt(user_id=user_id, quiz_id=id)
+        return QuizAttemptStartResponse(
+            id=attempt.id,
+            quiz_id=attempt.quiz_id,
+            started_at=attempt.started_at,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @router.post("/attempts/{id}/submit", response_model=QuizResultResponse)
@@ -277,98 +290,50 @@ def submit_quiz_attempt(
     current_user: dict = Depends(get_current_user),
 ):
     user_id = uuid.UUID(str(current_user["id"]))
-    attempt = db.execute(
-        select(QuizAttempt).where(QuizAttempt.id == id, QuizAttempt.user_id == user_id)
-    ).scalar_one_or_none()
-    if not attempt:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quiz attempt not found.")
+    service = QuizService(db)
+    try:
+        result = service.submit_attempt(user_id=user_id, attempt_id=id, req=req)
 
-    # Fetch quiz and questions
-    quiz = db.execute(select(Quiz).where(Quiz.id == attempt.quiz_id)).scalar_one_or_none()
-    qqs = db.execute(
-        select(QuizQuestion, GeneratedQuestion)
-        .join(GeneratedQuestion, QuizQuestion.generated_question_id == GeneratedQuestion.id)
-        .where(QuizQuestion.quiz_id == attempt.quiz_id)
-    ).all()
+        # Maintain backward compatibility for analytics stub
+        _ATTEMPTS_STORE[id] = {
+            "id": id,
+            "user_id": user_id,
+            "accuracy": result["accuracy"],
+        }
 
-    # Map question_id to (QuizQuestion, GeneratedQuestion)
-    q_map = {str(gq.id): (qq, gq) for qq, gq in qqs}
-
-    correct_count = 0
-    total_count = len(req.responses)
-    detailed_results = []
-    topic_scores = {}
-
-    for resp in req.responses:
-        q_entry = q_map.get(str(resp.quiz_question_id))
-        if not q_entry:
-            continue
-        qq, gq = q_entry
-        is_correct = (
-            resp.selected_answer is not None
-            and resp.selected_answer.strip().lower() == gq.correct_answer.strip().lower()
+        return QuizResultResponse(
+            attempt_id=result["attempt_id"],
+            quiz_id=result["quiz_id"],
+            score=result["score"],
+            total=result["total"],
+            accuracy=result["accuracy"],
+            time_taken_seconds=result["time_taken_seconds"],
+            responses=[QuizQuestionResult(**q) for q in result["questions"]],
+            recommendations=[RecommendationItem(**w) for w in result["weak_topics"]],
         )
-        if is_correct:
-            correct_count += 1
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
-        # Track topic performance
-        topic = gq.topic or "General"
-        if topic not in topic_scores:
-            topic_scores[topic] = {"correct": 0, "total": 0}
-        topic_scores[topic]["total"] += 1
-        if is_correct:
-            topic_scores[topic]["correct"] += 1
 
-        db_resp = QuizResponse(
-            id=uuid.uuid4(),
-            attempt_id=attempt.id,
-            quiz_question_id=qq.id,
-            selected_answer=resp.selected_answer,
-            is_correct=is_correct,
-            marked_for_review=resp.marked_for_review,
+@router.get("/attempts/{id}", response_model=QuizResultResponse)
+def get_attempt_review(
+    id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = uuid.UUID(str(current_user["id"]))
+    service = QuizService(db)
+    try:
+        result = service.get_attempt_review(user_id=user_id, attempt_id=id)
+        return QuizResultResponse(
+            attempt_id=result["attempt_id"],
+            quiz_id=result["quiz_id"],
+            score=result["score"],
+            total=result["total"],
+            accuracy=result["accuracy"],
+            time_taken_seconds=result["time_taken_seconds"],
+            responses=[QuizQuestionResult(**q) for q in result["questions"]],
+            recommendations=[RecommendationItem(**w) for w in result["weak_topics"]],
         )
-        db.add(db_resp)
-
-        detailed_results.append(QuizQuestionResult(
-            quiz_question_id=gq.id,
-            question_text=gq.question,
-            selected_answer=resp.selected_answer,
-            correct_answer=gq.correct_answer,
-            is_correct=is_correct,
-            explanation=gq.explanation,
-            source_page=gq.page,
-        ))
-
-    accuracy = round((correct_count / max(1, total_count)) * 100, 2)
-    attempt.status = "completed"
-    attempt.score = float(correct_count)
-    attempt.total = total_count
-    attempt.accuracy = accuracy
-    attempt.time_taken_seconds = req.time_taken_seconds
-    attempt.submitted_at = datetime.now(timezone.utc)
-
-    db.commit()
-
-    # Maintain backward compatibility for analytics stub
-    _ATTEMPTS_STORE[attempt.id] = {
-        "id": attempt.id,
-        "user_id": user_id,
-        "accuracy": accuracy,
-    }
-
-    weak_topics = [
-        RecommendationItem(topic=t, accuracy=round((v["correct"] / v["total"]) * 100, 1))
-        for t, v in topic_scores.items()
-        if (v["correct"] / v["total"]) < 0.6
-    ]
-
-    return QuizResultResponse(
-        attempt_id=attempt.id,
-        quiz_id=attempt.quiz_id,
-        score=correct_count,
-        total=total_count,
-        accuracy=accuracy,
-        time_taken_seconds=req.time_taken_seconds,
-        questions=detailed_results,
-        weak_topics=weak_topics,
-    )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
