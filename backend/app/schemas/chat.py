@@ -55,3 +55,4 @@ class AskQuestionResponse(BaseModel):
     answer: str
     sources: List[SourceCitation]
     mode: str
+    confidence_score: Optional[float] = 0.85
