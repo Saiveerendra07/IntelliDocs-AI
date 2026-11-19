@@ -48,18 +48,27 @@ class VectorStoreManager:
         metadatas = []
 
         for c in chunks:
-            c_idx = c.chunk_index if hasattr(c, "chunk_index") else c.get("chunk_index", 0)
+            c_idx = c.chunk_index if hasattr(c, "chunk_index") else (c.get("chunk_index", 0) if isinstance(c, dict) else 0)
             chunk_id = f"{document_id}_{c_idx}"
             ids.append(chunk_id)
-            texts.append(c.text if hasattr(c, "text") else c["text"])
+            c_text = (
+                getattr(c, "text", None)
+                or getattr(c, "content", None)
+                or (c.get("text") or c.get("content", "") if isinstance(c, dict) else str(c))
+            )
+            texts.append(c_text)
+
+            p_start = getattr(c, "page_start", None) or (c.get("page_start", 1) if isinstance(c, dict) else 1)
+            p_end = getattr(c, "page_end", None) or (c.get("page_end", p_start) if isinstance(c, dict) else p_start)
+            sec_title = getattr(c, "section_title", None) or (c.get("section_title", "") if isinstance(c, dict) else "")
 
             meta = {
                 "user_id": str(user_id),
                 "document_id": str(document_id),
-                "chunk_index": int(c.chunk_index if hasattr(c, "chunk_index") else c.get("chunk_index", 0)),
-                "page_start": int(c.page_start if hasattr(c, "page_start") else c.get("page_start", 1)),
-                "page_end": int(c.page_end if hasattr(c, "page_end") else c.get("page_end", 1)),
-                "section_title": str((c.section_title if hasattr(c, "section_title") else c.get("section_title")) or ""),
+                "chunk_index": int(c_idx),
+                "page_start": int(p_start),
+                "page_end": int(p_end),
+                "section_title": str(sec_title or ""),
             }
             metadatas.append(meta)
 
