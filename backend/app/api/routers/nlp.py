@@ -30,10 +30,15 @@ from backend.app.db.session import get_db
 from backend.app.db.models.document import Document, DocumentPage, DocumentChunk
 from backend.app.db.models.nlp import NLPAnalysis
 from backend.app.nlp.preprocessing import NLPPreprocessor
+from backend.app.nlp.keywords import HybridKeywordExtractor
+from backend.app.nlp.topics import LDATopicModeler, KMeansChunkClusterer
 from backend.app.api.routers.documents import _DOCS_STORE, _PAGES_STORE
 
 router = APIRouter(tags=["NLP Analysis"])
 preprocessor = NLPPreprocessor()
+keyword_extractor = HybridKeywordExtractor()
+lda_modeler = LDATopicModeler(n_topics=3, n_words=5)
+chunk_clusterer = KMeansChunkClusterer(n_clusters=3)
 
 
 def _get_document_text(db: Session, doc_id: uuid.UUID, user_id: uuid.UUID) -> Tuple[Any, str]:
@@ -183,55 +188,59 @@ async def get_doc_readability(
 @router.get("/documents/{id}/nlp/keywords", response_model=KeywordsResponse)
 async def get_doc_keywords(
     id: uuid.UUID,
+    top_n: int = Query(15, ge=3, le=50),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     user_id = uuid.UUID(str(current_user["id"]))
     _, full_text = _get_document_text(db, id, user_id)
 
-    # In M09 we implement TF-IDF, RAKE and TextRank from scratch
-    # For now, return top content unigrams and bigrams
-    res = preprocessor.process_full(full_text[:30000])
-    top_keywords = []
-    for item in res["bigrams"][:5]:
-        top_keywords.append(KeywordItem(term=item["phrase"].title(), score=round(item["count"] / 10.0, 2), method="RAKE"))
-    for item in res["unigrams"][:5]:
-        top_keywords.append(KeywordItem(term=item["phrase"].title(), score=round(item["count"] / 10.0, 2), method="TF-IDF"))
-
-    if not top_keywords:
-        top_keywords = [
-            KeywordItem(term="Document Analysis", score=0.92, method="TF-IDF"),
-            KeywordItem(term="Natural Language Processing", score=0.88, method="RAKE"),
-        ]
-
-    return KeywordsResponse(keywords=top_keywords)
+    raw_keywords = keyword_extractor.extract(full_text[:50000], top_n=top_n)
+    keyword_items = [
+        KeywordItem(term=k["term"], score=k["score"], method=k["method"])
+        for k in raw_keywords
+    ]
+    return KeywordsResponse(keywords=keyword_items)
 
 
 @router.get("/documents/{id}/nlp/topics", response_model=TopicsResponse)
 async def get_doc_topics(
     id: uuid.UUID,
+    n_topics: int = Query(3, ge=2, le=10),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     user_id = uuid.UUID(str(current_user["id"]))
     _, full_text = _get_document_text(db, id, user_id)
 
-    # In M09 we implement LDA and KMeans clustering
-    res = preprocessor.process_full(full_text[:30000])
-    top_words = [item["phrase"] for item in res["unigrams"][:8]]
-    if len(top_words) < 4:
-        top_words = ["document", "analysis", "nlp", "processing"]
+    # 1. Fetch chunks if available, else pages or split text
+    chunks = db.execute(
+        select(DocumentChunk)
+        .where(DocumentChunk.document_id == id)
+        .order_by(DocumentChunk.chunk_index)
+    ).scalars().all()
 
-    return TopicsResponse(
-        lda_topics=[
-            LDATopic(topic_id=1, words=top_words[:4]),
-            LDATopic(topic_id=2, words=top_words[4:8] if len(top_words) >= 8 else top_words[:4]),
-        ],
-        clusters=[
-            ChunkCluster(cluster_id=0, label="Document Key Concepts", chunk_count=max(1, len(top_words) // 2)),
-            ChunkCluster(cluster_id=1, label="Applied Methodologies", chunk_count=max(1, len(top_words) // 2)),
-        ],
-    )
+    if chunks:
+        chunk_texts = [c.text for c in chunks if c.text.strip()]
+    else:
+        pages = db.execute(
+            select(DocumentPage)
+            .where(DocumentPage.document_id == id)
+            .order_by(DocumentPage.page_number)
+        ).scalars().all()
+        chunk_texts = [p.text for p in pages if p.text.strip()] or [full_text]
+
+    # 2. Run LDA
+    modeler = LDATopicModeler(n_topics=n_topics, n_words=5)
+    lda_results = modeler.fit_transform(chunk_texts)
+    lda_topics = [LDATopic(**t) for t in lda_results]
+
+    # 3. Run KMeans Clustering
+    clusterer = KMeansChunkClusterer(n_clusters=min(n_topics, max(2, len(chunk_texts))))
+    cluster_results = clusterer.cluster_chunks(chunk_texts)
+    clusters = [ChunkCluster(**c) for c in cluster_results]
+
+    return TopicsResponse(lda_topics=lda_topics, clusters=clusters)
 
 
 @router.get("/documents/{id}/search-term", response_model=SearchTermResponse)
