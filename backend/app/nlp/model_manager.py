@@ -34,8 +34,9 @@ class ModelManager:
 
     def get_summarizer(self, model_name: Optional[str] = None):
         """
-        Returns a cached Hugging Face summarization pipeline.
-        Default: sshleifer/distilbart-cnn-12-6, fallback to t5-small.
+        Returns a cached Hugging Face summarization pipeline/wrapper.
+        Default: sshleifer/distilbart-cnn-12-6.
+        Compatible with Transformers 4.x and 5.x.
         """
         if self._summarizer is not None:
             return self._summarizer
@@ -44,25 +45,42 @@ class ModelManager:
         logger.info(f"Loading summarization pipeline for {target_model}...")
 
         try:
-            from transformers import pipeline
-            device_id = 0 if self.device == "cuda" else -1
-            self._summarizer = pipeline(
-                "summarization",
-                model=target_model,
-                device=device_id,
-                torch_dtype="auto" if self.device == "cuda" else None,
-            )
+            from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+            import torch
+
+            class _Seq2SeqSummarizer:
+                def __init__(self, m_name: str, dev: str):
+                    self.device = dev
+                    self.tokenizer = AutoTokenizer.from_pretrained(m_name)
+                    self.model = AutoModelForSeq2SeqLM.from_pretrained(m_name)
+                    if dev == "cuda" and torch.cuda.is_available():
+                        self.model.to("cuda")
+                    self.model.eval()
+
+                def __call__(self, text: str, max_length: int = 140, min_length: int = 40, **kwargs):
+                    inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=1024)
+                    if self.device == "cuda" and torch.cuda.is_available():
+                        inputs = {k: v.to("cuda") for k, v in inputs.items()}
+                    with torch.no_grad():
+                        out = self.model.generate(
+                            **inputs,
+                            max_length=max(max_length, 20),
+                            min_length=min(min_length, max_length - 5),
+                            no_repeat_ngram_size=3,
+                            num_beams=2,
+                            early_stopping=True,
+                        )
+                    res_text = self.tokenizer.decode(out[0], skip_special_tokens=True)
+                    return [{"summary_text": res_text}]
+
+            self._summarizer = _Seq2SeqSummarizer(target_model, self.device)
             logger.info(f"Summarizer {target_model} loaded successfully.")
             return self._summarizer
         except Exception as e:
             logger.warning(f"Failed to load {target_model}: {e}. Attempting fallback to 't5-small'...")
             try:
-                from transformers import pipeline
-                self._summarizer = pipeline(
-                    "summarization",
-                    model="t5-small",
-                    device=-1,
-                )
+                from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+                self._summarizer = _Seq2SeqSummarizer("t5-small", "cpu")
                 logger.info("Fallback summarizer 't5-small' loaded successfully.")
                 return self._summarizer
             except Exception as e2:

@@ -4,9 +4,10 @@ import sys
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 
-# Add backend directory to sys.path
+# Add project root and backend directory to sys.path
 sys.path.insert(0, os.path.abspath("."))
 sys.path.insert(0, os.path.abspath("backend"))
+sys.path.insert(0, os.path.abspath(".."))
 
 from backend.app.core.config import settings
 from backend.app.db.base import Base

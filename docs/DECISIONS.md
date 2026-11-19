@@ -46,3 +46,43 @@ This document tracks all key technical, architectural, and design decisions made
 - **Context**: Hardware constraint: Intel Core i5, 16 GB RAM, NVIDIA RTX 3050 4 GB VRAM.
 - **Decision**: Implement a singleton `ModelManager` with lazy loading, device auto-detection (`cuda` if >= 3 GB VRAM available, else `cpu`), FP16 precision on GPU, `torch.no_grad()`, and strict single-heavy-model resident policy (automatic memory eviction with `gc.collect()` and `torch.cuda.empty_cache()` before loading another model).
 - **Rationale**: Prevents OutOfMemory errors and ensures responsive performance on both CPU and entry-level dedicated GPUs.
+
+---
+
+### DEC-006: PostgreSQL Database Verification & Alembic Migrations
+- **Date**: 2026-11-19
+- **Context**: Audit of database execution between SQLite fallback and real PostgreSQL 16.
+- **Findings & Action**:
+  - In earlier M05 development, the session layer fell back to SQLite (`backend/storage/intellidocs.db`) because local PostgreSQL authentication failed with default credentials.
+  - With PostgreSQL 16 running and `.env` configured with user `intellidocs_user` and database `intellidocs`, Alembic migrations were generated (`2026_11_19_1024-bdd25604e9e5_initial_schema.py`) and executed with `alembic upgrade head` on `PostgresqlImpl`.
+  - All 16 database tables (`users`, `documents`, `document_pages`, `document_chunks`, `nlp_analyses`, `summaries`, `conversations`, `chat_messages`, `generated_questions`, `quizzes`, `quiz_questions`, `quiz_attempts`, `quiz_responses`, `flashcards`, `learning_progress`, `activity_log`) were verified in PostgreSQL.
+  - `test_database_and_cascades.py` was re-run and verified against PostgreSQL 16 (3 passed in 4.21s).
+
+---
+
+### DEC-007: Tesseract OCR Verification on Scanned Documents and Images
+- **Date**: 2026-11-19
+- **Context**: Verification of OCR execution against Tesseract v5.4.0 on Windows.
+- **Findings & Action**:
+  - M06 originally tested digital extractors (PyMuPDF vector text, docx, pptx, txt, csv).
+  - Tesseract 5.4.0 was verified on PATH (`tesseract v5.4.0.20240606`).
+  - Added dedicated OCR verification tests in `backend/tests/unit/test_ocr_processing.py`:
+    1. A rendered PNG image passed through `ImageExtractor` with `pytesseract`.
+    2. A synthetic scanned PDF (image embedded without digital text layer) passed through `PDFExtractor` triggering scanned-page detection and OCR fallback.
+  - Both tests passed with real OCR extraction on Windows in 3.74s.
+
+---
+
+### DEC-008: Local Neural Model Execution Benchmarking (MiniLM & DistilBART)
+- **Date**: 2026-11-19
+- **Context**: Empirical benchmarking of local neural models (`all-MiniLM-L6-v2` and `sshleifer/distilbart-cnn-12-6`).
+- **Findings & Benchmark Results**:
+  - Both models were downloaded to local HuggingFace cache and benchmarked on real document passages.
+  - Device used: CPU (`torch.cuda.is_available() == False` on installed PyTorch CPU build).
+  - `all-MiniLM-L6-v2`:
+    - Cold-start load: ~10.88s.
+    - Warm inference: 12.46ms per query, producing 384-dimensional dense vectors.
+  - `sshleifer/distilbart-cnn-12-6`:
+    - Adapted for Transformers 5.x via `AutoModelForSeq2SeqLM` and `AutoTokenizer` inside `ModelManager`.
+    - Cold-start load + download: ~16.03s.
+    - Warm inference: 2.15s per passage (beam search, num_beams=2, max_length=60), producing true abstractive summary text.

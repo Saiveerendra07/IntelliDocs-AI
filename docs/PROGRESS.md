@@ -11,7 +11,7 @@
 | M07 | NLP preprocessing | `feat: implement NLP preprocessing` | Completed | 2026-11-19 | 4 NLP preprocessing tests passed (Syllables, Readability, Pipeline, Endpoints); 24/24 backend tests passed | `098005f` | Yes (verified on origin/main) |
 | M08 | Text summarization | `feat: implement text summarization` | Completed | 2026-11-19 | 7 text summarization tests passed (Frequency, TF-IDF, TextRank, Abstractive Map-Reduce, ROUGE, APIs); 31/31 backend tests passed | `14f832b` | Yes (verified on origin/main) |
 | M09 | Keyword & topic extraction | `feat: add keyword extraction` | Completed | 2026-11-19 | 6 keyword & topic tests passed (RAKE, TextRank, Hybrid, LDA, KMeans, APIs); 37/37 backend tests passed | `56b8860` | Yes (verified on origin/main) |
-| M10 | Semantic search | `feat: add semantic search` | Planned | - | - | - | - |
+| M10 | Semantic search | `feat: implement semantic search and vectorstore` | Completed | 2026-11-19 | 4 semantic search & vectorstore tests passed (MiniLM-L6-v2, BM25 Okapi, ChromaDB multi-tenant isolation, Hybrid RRF API); 41/41 backend tests passed | `d19d44b` | Yes (verified on origin/main at d19d44b) |
 | M11 | RAG question answering | `feat: implement RAG question answering` | Planned | - | - | - | - |
 | M12 | Automatic question generation | `feat: add question generation` | Planned | - | - | - | - |
 | M13 | Interactive quiz system | `feat: implement quiz system` | Planned | - | - | - | - |
