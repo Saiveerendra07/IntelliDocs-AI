@@ -1,0 +1,83 @@
+{
+  "metadata": {
+    "evaluation_engine": "IntelliDocs NLP Evaluation Framework v1.0",
+    "timestamp": "2026-11-19T05:54:11.440409+00:00",
+    "target_device": "cpu",
+    "python_version": "3.12.10"
+  },
+  "summarization": {
+    "Frequency": {
+      "rouge1_f1": 0.3866,
+      "rouge2_f1": 0.2051,
+      "rougeL_f1": 0.3361,
+      "rouge1_recall": 0.5349,
+      "rouge1_precision": 0.3026,
+      "compression_ratio": 0.42,
+      "latency_seconds": 0.031,
+      "sample_output": "Natural Language Processing (NLP) is a branch of artificial intelligence that enables computers to understand, interpret, and generate human..."
+    },
+    "TF-IDF": {
+      "rouge1_f1": 0.2653,
+      "rouge2_f1": 0.125,
+      "rougeL_f1": 0.2653,
+      "rouge1_recall": 0.3023,
+      "rouge1_precision": 0.2364,
+      "compression_ratio": 0.31,
+      "latency_seconds": 0.018,
+      "sample_output": "Natural Language Processing (NLP) is a branch of artificial intelligence that enables computers to understand, interpret, and generate human..."
+    },
+    "TextRank": {
+      "rouge1_f1": 0.5586,
+      "rouge2_f1": 0.3303,
+      "rougeL_f1": 0.4324,
+      "rouge1_recall": 0.7209,
+      "rouge1_precision": 0.4559,
+      "compression_ratio": 0.362,
+      "latency_seconds": 0.016,
+      "sample_output": "Modern language processing systems rely on vector semantics, where words and semantic tokens are mapped into dense high-dimensional continuo..."
+    },
+    "DistilBART": {
+      "rouge1_f1": 0.2,
+      "rouge2_f1": 0.0455,
+      "rougeL_f1": 0.1778,
+      "rouge1_recall": 0.2093,
+      "rouge1_precision": 0.1915,
+      "compression_ratio": 0.27,
+      "latency_seconds": 13.145,
+      "sample_output": "Modern language processing systems rely on vector semantics, where words and semantic tokens are mapped into dense high-dimensional continuo..."
+    }
+  },
+  "information_retrieval": {
+    "Dense_MiniLM": {
+      "MRR@5": 1.0,
+      "NDCG@5": 1.0,
+      "Precision@1": 1.0
+    },
+    "Sparse_BM25": {
+      "MRR@5": 1.0,
+      "NDCG@5": 1.0,
+      "Precision@1": 1.0
+    },
+    "Hybrid_RRF": {
+      "MRR@5": 1.0,
+      "NDCG@5": 1.0,
+      "Precision@1": 1.0
+    }
+  },
+  "readability_and_lexical": {
+    "flesch_reading_ease": 2.63,
+    "flesch_reading_ease_label": "Very Difficult (Post-Graduate / Technical)",
+    "flesch_kincaid_grade": 17.97,
+    "gunning_fog": 22.31,
+    "coleman_liau": 20.84,
+    "automated_readability_index": 19.3,
+    "type_token_ratio": 0.75,
+    "average_sentence_length": 20.44
+  },
+  "grounding_and_calibration": {
+    "brier_score": 0.082,
+    "mean_absolute_calibration_error": 0.065,
+    "grounding_sentence_support_ratio": 0.941,
+    "citation_accuracy_score": 0.985
+  }
+}
