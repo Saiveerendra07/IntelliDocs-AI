@@ -15,22 +15,53 @@ class DocumentChunk(BaseModel):
 
 def split_into_sentences(text: str) -> List[str]:
     """
-    Splits text into sentences. Attempts NLTK sent_tokenize,
-    falling back to regular expressions if NLTK data is unavailable.
+    Splits text into coherent sentences and statements.
+    Handles bullet lists, slide text without trailing periods, and unicode arrows.
     """
-    try:
-        import nltk
-        sentences = nltk.tokenize.sent_tokenize(text)
-        if sentences:
-            return sentences
-    except Exception:
-        pass
+    if not text or not text.strip():
+        return []
 
-    # Regex-based fallback for sentence splitting
-    sentence_end_pattern = re.compile(r'(?<=[.!?])\s+(?=[A-Z0-9"\'])')
-    raw_sentences = sentence_end_pattern.split(text.strip())
-    cleaned = [s.strip() for s in raw_sentences if s.strip()]
-    return cleaned if cleaned else [text.strip()]
+    # Clean unicode symbols and normalize bullet markers
+    cleaned_text = (
+        text.replace("\uf0e0", "->")
+        .replace("\uf0a7", "*")
+        .replace("\uf0b7", "*")
+        .replace("\u2022", "*")
+        .replace("\u2013", "-")
+        .replace("\u2014", "-")
+    )
+
+    # Process line-by-line to respect bullet points and list items
+    lines = [line.strip() for line in cleaned_text.splitlines() if line.strip()]
+    results = []
+
+    for line in lines:
+        # Strip leading bullet indicators (*, -, •, numbers like 1.)
+        cleaned_line = re.sub(r"^[\*\-\•\d+\.]\s*", "", line).strip()
+        if not cleaned_line:
+            continue
+
+        # If line has multiple internal sentences with periods
+        try:
+            import nltk
+            sub_sents = nltk.tokenize.sent_tokenize(cleaned_line)
+            for s in sub_sents:
+                s_strip = s.strip()
+                if s_strip:
+                    results.append(s_strip)
+        except Exception:
+            # Fallback regex
+            sentence_end_pattern = re.compile(r'(?<=[.!?])\s+(?=[A-Z0-9"\'])')
+            raw = sentence_end_pattern.split(cleaned_line)
+            for r in raw:
+                r_strip = r.strip()
+                if r_strip:
+                    results.append(r_strip)
+
+    if not results:
+        results = [text.strip()]
+
+    return results
 
 
 class SentenceAwareChunker:
@@ -40,10 +71,67 @@ class SentenceAwareChunker:
 
     def chunk_pages(self, pages: List[PageContent]) -> List[DocumentChunk]:
         """
-        Chunks a sequence of PageContent into overlapping chunks of target_words.
-        Maintains start and end page tracking and section titles.
+        Chunks a sequence of PageContent into coherent units.
+        For slide-based or short-page documents, keeps slide units coherent.
+        For continuous multi-page documents, maintains target_words with overlap.
         """
-        # Flatten page items into sentence records with page metadata
+        if not pages:
+            return []
+
+        # Check if document has slide-like or short-page structure
+        content_pages = [p for p in pages if len(p.text.split()) >= 10 and not p.text.startswith("[Slide")]
+        avg_words_per_page = (
+            sum(len(p.text.split()) for p in content_pages) / max(1, len(content_pages))
+            if content_pages else 0
+        )
+        is_slide_structure = len(pages) > 3 and avg_words_per_page < 160
+
+        if is_slide_structure:
+            return self._chunk_slides(pages)
+        else:
+            return self._chunk_continuous(pages)
+
+    def _chunk_slides(self, pages: List[PageContent]) -> List[DocumentChunk]:
+        """Preserves individual slides or tightly coupled slide pairs as chunks."""
+        chunks: List[DocumentChunk] = []
+        chunk_idx = 0
+        pending_title = None
+
+        for page in pages:
+            text = page.text.strip()
+            word_count = len(text.split())
+
+            # Ignore empty slides
+            if not text or text.startswith("[Slide") or word_count < 3:
+                continue
+
+            # If slide has very few words (< 15 words) and might be a title slide
+            if word_count < 15:
+                pending_title = page.section_title or text
+                continue
+
+            # Slide has meaningful content
+            active_section = page.section_title or pending_title
+            content_text = text
+            if pending_title and pending_title not in content_text:
+                content_text = f"{pending_title}\n\n{text}"
+            pending_title = None
+
+            token_count = len(content_text.split())
+            chunks.append(DocumentChunk(
+                chunk_index=chunk_idx,
+                content=content_text,
+                page_start=page.page_number,
+                page_end=page.page_number,
+                section_title=active_section,
+                token_count=token_count,
+            ))
+            chunk_idx += 1
+
+        return chunks
+
+    def _chunk_continuous(self, pages: List[PageContent]) -> List[DocumentChunk]:
+        """Continuous sentence-aware sliding window chunking."""
         sentence_records = []
         for page in pages:
             sentences = split_into_sentences(page.text)
@@ -74,6 +162,16 @@ class SentenceAwareChunker:
 
             while j < n:
                 rec = sentence_records[j]
+
+                # Do not cross section boundaries if current chunk already has meaningful content
+                if (
+                    rec["section_title"]
+                    and active_section
+                    and rec["section_title"] != active_section
+                    and current_words >= 35
+                ):
+                    break
+
                 current_sentences.append(rec["sentence"])
                 current_words += rec["word_count"]
                 page_end = rec["page_number"]
@@ -100,14 +198,12 @@ class SentenceAwareChunker:
             if j >= n:
                 break
 
-            # Calculate overlap backwards from j
             overlap_accum = 0
             step_back = 0
             while (j - 1 - step_back) > i and overlap_accum < self.overlap_words:
                 overlap_accum += sentence_records[j - 1 - step_back]["word_count"]
                 step_back += 1
 
-            # Advance i
             if (j - step_back) > i:
                 i = j - step_back
             else:

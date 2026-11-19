@@ -1,0 +1,15 @@
+The Routing Information Protocol (RIP) is an intradomain routing protocol used inside an Autonomous System (AS).
+Based on Distance Vector Routing.
+Metric in RIP is called a hop count, which represents the number of links or networks to reach the destination.
+The number of networks that must be traversed to reach the destination is called the hop count.
+The path with the least hops is considered the optimal route to a network.
+Max hop count = 15.
+Infinity is defined as 16, which means that any route in an AS using RIP cannot have more than 15 hops.
+If hop count = 16, the network is considered inaccessible.
+
+Open Shortest Path First (OSPF) is an intradomain routing protocol based on link state routing.
+OSPF operates as an Interior Gateway Protocol within an Autonomous System.
+Metric in OSPF is defined as Cost, which accounts for minimum delay and maximum throughput.
+A transient link is a network with several routers attached to it where data can enter through any router and leave through any router.
+A stub link is a network that is connected to only one router, where data packets enter and leave through the same router.
+A point-to-point link connects two routers without any other host or router in between.

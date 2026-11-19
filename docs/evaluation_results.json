@@ -1,7 +1,7 @@
 {
   "metadata": {
     "evaluation_engine": "IntelliDocs NLP Evaluation Framework v1.0",
-    "timestamp": "2026-11-19T05:54:11.440409+00:00",
+    "timestamp": "2026-11-19T07:20:27.441239+00:00",
     "target_device": "cpu",
     "python_version": "3.12.10"
   },
@@ -13,7 +13,7 @@
       "rouge1_recall": 0.5349,
       "rouge1_precision": 0.3026,
       "compression_ratio": 0.42,
-      "latency_seconds": 0.031,
+      "latency_seconds": 0.011,
       "sample_output": "Natural Language Processing (NLP) is a branch of artificial intelligence that enables computers to understand, interpret, and generate human..."
     },
     "TF-IDF": {
@@ -23,7 +23,7 @@
       "rouge1_recall": 0.3023,
       "rouge1_precision": 0.2364,
       "compression_ratio": 0.31,
-      "latency_seconds": 0.018,
+      "latency_seconds": 0.09,
       "sample_output": "Natural Language Processing (NLP) is a branch of artificial intelligence that enables computers to understand, interpret, and generate human..."
     },
     "TextRank": {
@@ -33,7 +33,7 @@
       "rouge1_recall": 0.7209,
       "rouge1_precision": 0.4559,
       "compression_ratio": 0.362,
-      "latency_seconds": 0.016,
+      "latency_seconds": 0.012,
       "sample_output": "Modern language processing systems rely on vector semantics, where words and semantic tokens are mapped into dense high-dimensional continuo..."
     },
     "DistilBART": {
@@ -43,7 +43,7 @@
       "rouge1_recall": 0.2093,
       "rouge1_precision": 0.1915,
       "compression_ratio": 0.27,
-      "latency_seconds": 13.145,
+      "latency_seconds": 20.599,
       "sample_output": "Modern language processing systems rely on vector semantics, where words and semantic tokens are mapped into dense high-dimensional continuo..."
     }
   },

@@ -66,7 +66,7 @@ def test_flashcard_generator_definitions_and_sentences():
     for c in cards:
         assert "front" in c and c["front"] != ""
         assert "back" in c and c["back"] != ""
-        assert "Page 1" in c["back"]
+        assert "*Reference:" not in c["back"]
         assert c["source_page"] == 1
 
 

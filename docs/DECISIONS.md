@@ -86,3 +86,18 @@ This document tracks all key technical, architectural, and design decisions made
     - Adapted for Transformers 5.x via `AutoModelForSeq2SeqLM` and `AutoTokenizer` inside `ModelManager`.
     - Cold-start load + download: ~16.03s.
     - Warm inference: 2.15s per passage (beam search, num_beams=2, max_length=60), producing true abstractive summary text.
+
+
+---
+
+## DEC-009: RAG Relevance Calibration, In-Document Distractor Generation, and Extraction Quality
+- **Date**: 2026-11-19
+- **Status**: Accepted & Verified
+- **Context**: An empirical quality audit conducted on `RIP_OSPF.pptx` identified that off-topic queries (e.g. "explain virtual memory paging" on a routing document) produced weak answers with ungrounded citations, distractors in QGen were using canned synthetic patterns, flashcard bodies contained formatting artifacts like `*Reference: Page X*`, and PPTX title extraction duplicated header text across slides.
+- **Decision**:
+  1. **RAG Relevance Threshold Calibration**: Set `RELEVANCE_THRESHOLD_COSINE = 0.32` and `RELEVANCE_THRESHOLD_STRICT = 0.40`. Re-ranker and similarity pass evaluates dense cosine similarity between query and retrieved passages alongside lexical content overlap (`lexical_matches`). If cosine similarity is below 0.32, or below 0.40 without keyword overlap, the RAG engine immediately aborts retrieval and returns `I couldn't find this in the selected document(s).` with `confidence_score = 0.0` and `sources = []`.
+  2. **In-Document Distractor Selection**: Eliminated all generic canned distractors. Distractors are strictly selected from other extracted terms, definitions, or numeric values of the same entity type occurring in the document, ranked by embedding similarity to the stem. Distractor terms are globally tracked across questions to enforce that no distractor is repeated across questions.
+  3. **Meaningful Question Generation**: Questions are constructed from verified definitions, metrics, and algorithms. Pronoun subjects (`It`, `They`, `We`, `This`, etc.) and colon headings (`:-`) are discarded. Every question has single-page attribution and genuine source explanations.
+  4. **Flashcard Hygiene**: Separated page references into a dedicated integer `source_page` field and stripped all `*Reference: Page*` strings from the flashcard back. Flashcards are capped to the top 10 highest-quality cards.
+  5. **Presentation Chunking & PPTX Ingestion**: Fixed slide title duplication in `pptx.py`. In `chunking.py`, presentation slide boundaries are preserved as single-page chunks (`page_start == page_end`) to maintain 1:1 attribution for slide decks and avoid topic dilution.
+  6. **Multi-Provider LLM Abstraction**: Implemented `backend/app/llm/` supporting `GEMINI_API_KEY` and `OPENAI_API_KEY` with explicit user notice (`provider_notice`) when external APIs are used, while maintaining 100% offline local synthesis.
