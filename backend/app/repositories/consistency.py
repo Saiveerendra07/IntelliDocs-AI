@@ -60,6 +60,14 @@ def purge_document_cascade(db: Session, document_id: uuid.UUID) -> bool:
         except OSError:
             pass
 
+    # Delete indexed vectors from ChromaDB
+    try:
+        from backend.app.nlp.vectorstore import VectorStoreManager
+        vm = VectorStoreManager()
+        vm.delete_document_vectors(user_id=doc.user_id, document_id=doc.id)
+    except Exception:
+        pass
+
     # SQLAlchemy relationship cascade deletes pages, chunks, summaries, questions, flashcards
     db.delete(doc)
     db.commit()

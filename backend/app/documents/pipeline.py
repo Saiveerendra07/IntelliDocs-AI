@@ -100,7 +100,15 @@ class DocumentPipeline:
                 )
                 self.db.add(chunk_rec)
 
-            # 5. Mark document as ready
+            # 5. Index chunks into Vector Store (ChromaDB)
+            try:
+                from backend.app.nlp.vectorstore import VectorStoreManager
+                vm = VectorStoreManager()
+                vm.index_chunks(user_id=user_id, document_id=doc.id, chunks=chunks_dto)
+            except Exception as e_vec:
+                logger.warning(f"Vector indexing skipped/failed for {doc.id}: {e_vec}")
+
+            # 6. Mark document as ready
             doc.status = "ready"
             doc.processing_progress = 1.0
             doc.error_message = None

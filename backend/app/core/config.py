@@ -32,12 +32,14 @@ class Settings(BaseSettings):
     # Storage & Upload Limits
     MAX_UPLOAD_MB: int = 50
     STORAGE_DIR: str = "backend/storage"
+    CHROMA_PERSIST_DIR: str = "backend/storage/chroma"
 
     # OCR Settings
     TESSERACT_CMD: str = "C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
 
     # Hardware & NLP Model Config
     DEVICE: str = "auto"
+    TORCH_DEVICE: str = "cpu"
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     SUMMARIZATION_MODEL: str = "sshleifer/distilbart-cnn-12-6"
     GENERATION_MODEL: str = "google/flan-t5-base"

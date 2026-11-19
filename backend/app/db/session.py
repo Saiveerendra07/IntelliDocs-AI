@@ -40,7 +40,7 @@ def _initialize_engine():
             echo=False,
         )
 
-    if db_url.startswith("sqlite"):
+    try:
         import backend.app.db.models.user
         import backend.app.db.models.document
         import backend.app.db.models.nlp
@@ -49,6 +49,8 @@ def _initialize_engine():
         import backend.app.db.models.flashcard
         import backend.app.db.models.learning
         Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        logger.warning(f"Metadata create_all check error: {e}")
 
     return engine
 
