@@ -56,3 +56,16 @@ class AskQuestionResponse(BaseModel):
     sources: List[SourceCitation]
     mode: str
     confidence_score: Optional[float] = 0.85
+
+
+class TutorRequest(BaseModel):
+    query: str
+    document_ids: List[uuid.UUID]
+    tutor_mode: str = "simplify"
+
+
+class TutorResponse(BaseModel):
+    tutor_mode: str
+    response: str
+    sources: List[SourceCitation]
+    confidence_score: float

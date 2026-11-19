@@ -17,6 +17,8 @@ from backend.app.schemas.chat import (
     AskQuestionRequest,
     AskQuestionResponse,
     SourceCitation,
+    TutorRequest,
+    TutorResponse,
 )
 
 router = APIRouter(prefix="/chat", tags=["Chat & RAG"])
@@ -237,4 +239,41 @@ def direct_query(
         sources=citations,
         mode=rag_result["explanation_mode"],
         confidence_score=rag_result["confidence_score"],
+    )
+
+
+@router.post("/assistant/tutor", response_model=TutorResponse)
+def study_assistant_tutor(
+    req: TutorRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    from backend.app.nlp.explain import StudyAssistantEngine
+    user_id = uuid.UUID(str(current_user["id"]))
+    assistant = StudyAssistantEngine(db)
+    result = assistant.assist(
+        user_id=user_id,
+        query=req.query,
+        document_ids=req.document_ids,
+        tutor_mode=req.tutor_mode,
+    )
+
+    citations = [
+        SourceCitation(
+            chunk_id=s["chunk_id"],
+            document_id=str(s["document_id"]),
+            filename=s["document_title"],
+            page_start=s["page_start"],
+            page_end=s["page_end"],
+            score=s["score"],
+            snippet=s["snippet"],
+        )
+        for s in result["sources"]
+    ]
+
+    return TutorResponse(
+        tutor_mode=result["tutor_mode"],
+        response=result["response"],
+        sources=citations,
+        confidence_score=result["confidence_score"],
     )
