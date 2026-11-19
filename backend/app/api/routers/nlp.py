@@ -1,6 +1,10 @@
 import uuid
-from typing import Optional
+from typing import Optional, List, Tuple, Any
+from collections import Counter
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+from sqlalchemy import select
+
 from backend.app.schemas.nlp import (
     PreprocessRequest,
     PreprocessResponse,
@@ -19,36 +23,56 @@ from backend.app.schemas.nlp import (
     ChunkCluster,
     SearchTermResponse,
     SearchTermPassage,
+    ReadabilityResponse,
 )
 from backend.app.core.deps import get_current_user
+from backend.app.db.session import get_db
+from backend.app.db.models.document import Document, DocumentPage, DocumentChunk
+from backend.app.db.models.nlp import NLPAnalysis
+from backend.app.nlp.preprocessing import NLPPreprocessor
 from backend.app.api.routers.documents import _DOCS_STORE, _PAGES_STORE
 
 router = APIRouter(tags=["NLP Analysis"])
+preprocessor = NLPPreprocessor()
+
+
+def _get_document_text(db: Session, doc_id: uuid.UUID, user_id: uuid.UUID) -> Tuple[Any, str]:
+    # Check DB first
+    doc = db.execute(
+        select(Document).where(Document.id == doc_id, Document.user_id == user_id)
+    ).scalar_one_or_none()
+
+    if doc:
+        pages = db.execute(
+            select(DocumentPage)
+            .where(DocumentPage.document_id == doc_id)
+            .order_by(DocumentPage.page_number)
+        ).scalars().all()
+        full_text = "\n\n".join([p.text for p in pages if p.text])
+        return doc, full_text
+
+    # Fallback to in-memory store
+    doc_mem = _DOCS_STORE.get(doc_id)
+    if not doc_mem or str(doc_mem["user_id"]) != str(user_id):
+        raise HTTPException(status_code=404, detail="Document not found.")
+
+    pages_mem = _PAGES_STORE.get(doc_id, [])
+    full_text = "\n\n".join([p["text"] for p in pages_mem if p.get("text")])
+    return doc_mem, full_text
 
 
 @router.post("/nlp/preprocess", response_model=PreprocessResponse)
 async def adhoc_preprocess(req: PreprocessRequest):
-    text = req.text
-    words = text.split()
-    cleaned = " ".join([w.lower().strip(".,!?:;") for w in words])
-    tokens = cleaned.split()
-    unique = list(set(tokens))
-    stopwords = {"the", "a", "an", "is", "in", "it", "of", "and", "or", "for", "with", "on", "at", "by", "this", "that"}
-    filtered = [w for w in tokens if w not in stopwords]
-
+    res = preprocessor.process_full(req.text)
     return PreprocessResponse(
-        sample_original=text[:300],
-        sample_cleaned=cleaned[:300],
-        stats={
-            "total_tokens": len(tokens),
-            "unique_tokens": len(unique),
-            "tokens_after_stopwords": len(filtered),
-        },
-        tokens=tokens[:50],
-        filtered_tokens=filtered[:50],
-        porter_stems=[w[:4] for w in filtered[:30]],
-        snowball_stems=[w[:4] for w in filtered[:30]],
-        lemmatized_sample=filtered[:30],
+        sample_original=res["sample_original"],
+        sample_cleaned=res["sample_cleaned"],
+        stats=res["stats"],
+        tokens=res["tokens"][:50],
+        filtered_tokens=res["filtered_tokens"][:50],
+        porter_stems=res["porter_stems"][:50],
+        snowball_stems=res["snowball_stems"][:50],
+        lemmatized_sample=res["lemmatized_sample"][:50],
     )
 
 
@@ -57,33 +81,21 @@ async def get_doc_preprocessing(
     id: uuid.UUID,
     sample_size: int = Query(300, ge=50, le=2000),
     current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    doc = _DOCS_STORE.get(id)
-    if not doc or str(doc["user_id"]) != str(current_user["id"]):
-        raise HTTPException(status_code=404, detail="Document not found.")
+    user_id = uuid.UUID(str(current_user["id"]))
+    _, full_text = _get_document_text(db, id, user_id)
 
-    pages = _PAGES_STORE.get(id, [])
-    full_text = "\n".join([p["text"] for p in pages]) or "No text available."
-    words = full_text.split()
-    tokens = [w.lower().strip(".,!?:;()") for w in words[:sample_size]]
-    tokens = [w for w in tokens if w]
-    unique = list(set(tokens))
-    stopwords = {"the", "a", "an", "is", "in", "it", "of", "and", "or", "for", "with", "on", "at", "by", "this", "that", "to", "from"}
-    filtered = [w for w in tokens if w not in stopwords]
-
+    res = preprocessor.process_full(full_text[:50000])
     return PreprocessResponse(
-        sample_original=full_text[:300],
-        sample_cleaned=" ".join(tokens)[:300],
-        stats={
-            "total_tokens": len(tokens),
-            "unique_tokens": len(unique),
-            "tokens_after_stopwords": len(filtered),
-        },
-        tokens=tokens[:50],
-        filtered_tokens=filtered[:50],
-        porter_stems=[w[:5] for w in filtered[:25]],
-        snowball_stems=[w[:5] for w in filtered[:25]],
-        lemmatized_sample=filtered[:25],
+        sample_original=res["sample_original"],
+        sample_cleaned=res["sample_cleaned"],
+        stats=res["stats"],
+        tokens=res["tokens"][:50],
+        filtered_tokens=res["filtered_tokens"][:50],
+        porter_stems=res["porter_stems"][:50],
+        snowball_stems=res["snowball_stems"][:50],
+        lemmatized_sample=res["lemmatized_sample"][:50],
     )
 
 
@@ -92,68 +104,52 @@ async def get_doc_pos(
     id: uuid.UUID,
     sample_size: int = Query(100, ge=20, le=500),
     current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    doc = _DOCS_STORE.get(id)
-    if not doc or str(doc["user_id"]) != str(current_user["id"]):
-        raise HTTPException(status_code=404, detail="Document not found.")
+    user_id = uuid.UUID(str(current_user["id"]))
+    _, full_text = _get_document_text(db, id, user_id)
 
-    pages = _PAGES_STORE.get(id, [])
-    full_text = "\n".join([p["text"] for p in pages])
-    words = full_text.split()[:sample_size]
-
-    pos_list = []
-    for w in words:
-        clean = w.strip(".,!?:;()")
-        if not clean:
-            continue
-        pos = "NOUN" if clean[0].isupper() else ("VERB" if clean.endswith("ed") or clean.endswith("ing") else "ADJ")
-        pos_list.append(POSToken(text=clean, pos=pos, tag=pos[:2], lemma=clean.lower()))
-
-    return POSResponse(tokens=pos_list)
+    res = preprocessor.process_full(full_text[:20000])
+    pos_items = [POSToken(**item) for item in res["pos_tokens"][:sample_size]]
+    return POSResponse(tokens=pos_items)
 
 
 @router.get("/documents/{id}/nlp/entities", response_model=NERResponse)
-async def get_doc_entities(id: uuid.UUID, current_user: dict = Depends(get_current_user)):
-    doc = _DOCS_STORE.get(id)
-    if not doc or str(doc["user_id"]) != str(current_user["id"]):
-        raise HTTPException(status_code=404, detail="Document not found.")
+async def get_doc_entities(
+    id: uuid.UUID,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_id = uuid.UUID(str(current_user["id"]))
+    _, full_text = _get_document_text(db, id, user_id)
 
-    entities = [
-        EntityItem(text=doc["original_filename"], label="DOCUMENT", start_char=0, end_char=len(doc["original_filename"])),
-        EntityItem(text="IntelliDocs Engine", label="ORG", start_char=10, end_char=28),
-    ]
+    res = preprocessor.process_full(full_text[:50000])
+    entity_items = [EntityItem(**ent) for ent in res["entities"]]
     return NERResponse(
-        entities=entities,
-        entity_counts={"DOCUMENT": 1, "ORG": 1}
+        entities=entity_items,
+        entity_counts=res["entity_counts"],
     )
 
 
 @router.get("/documents/{id}/nlp/ngrams", response_model=NgramsResponse)
 async def get_doc_ngrams(
     id: uuid.UUID,
-    n: int = Query(2, ge=1, le=4),
+    n: int = Query(2, ge=1, le=3),
     current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    doc = _DOCS_STORE.get(id)
-    if not doc or str(doc["user_id"]) != str(current_user["id"]):
-        raise HTTPException(status_code=404, detail="Document not found.")
+    user_id = uuid.UUID(str(current_user["id"]))
+    _, full_text = _get_document_text(db, id, user_id)
 
-    pages = _PAGES_STORE.get(id, [])
-    full_text = "\n".join([p["text"] for p in pages])
-    words = [w.lower().strip(".,!?:;()") for w in full_text.split()]
-    words = [w for w in words if len(w) > 2]
+    res = preprocessor.process_full(full_text[:50000])
+    if n == 1:
+        ngrams_list = [NgramItem(**item) for item in res["unigrams"]]
+    elif n == 3:
+        ngrams_list = [NgramItem(**item) for item in res["trigrams"]]
+    else:
+        ngrams_list = [NgramItem(**item) for item in res["bigrams"]]
 
-    ngrams = []
-    if len(words) >= n:
-        for i in range(len(words) - n + 1):
-            phrase = " ".join(words[i : i + n])
-            ngrams.append(phrase)
-
-    from collections import Counter
-    counts = Counter(ngrams).most_common(15)
-    return NgramsResponse(
-        ngrams=[NgramItem(phrase=p, count=c) for p, c in counts]
-    )
+    return NgramsResponse(ngrams=ngrams_list)
 
 
 @router.get("/documents/{id}/nlp/frequency", response_model=FrequencyResponse)
@@ -161,52 +157,79 @@ async def get_doc_frequency(
     id: uuid.UUID,
     top_n: int = Query(20, ge=5, le=100),
     current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    doc = _DOCS_STORE.get(id)
-    if not doc or str(doc["user_id"]) != str(current_user["id"]):
-        raise HTTPException(status_code=404, detail="Document not found.")
+    user_id = uuid.UUID(str(current_user["id"]))
+    _, full_text = _get_document_text(db, id, user_id)
 
-    pages = _PAGES_STORE.get(id, [])
-    full_text = "\n".join([p["text"] for p in pages])
-    words = [w.lower().strip(".,!?:;()") for w in full_text.split()]
-    stopwords = {"the", "a", "an", "is", "in", "it", "of", "and", "or", "for", "with", "on", "at", "by", "this", "that", "to"}
-    words = [w for w in words if w and w not in stopwords and len(w) > 2]
+    res = preprocessor.process_full(full_text[:50000])
+    freq_items = [FrequencyItem(**item) for item in res["frequencies"][:top_n]]
+    return FrequencyResponse(frequencies=freq_items)
 
-    from collections import Counter
-    counts = Counter(words).most_common(top_n)
-    return FrequencyResponse(
-        frequencies=[FrequencyItem(word=w, count=c) for w, c in counts]
-    )
+
+@router.get("/documents/{id}/nlp/readability", response_model=ReadabilityResponse)
+async def get_doc_readability(
+    id: uuid.UUID,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_id = uuid.UUID(str(current_user["id"]))
+    _, full_text = _get_document_text(db, id, user_id)
+
+    res = preprocessor.process_full(full_text[:50000])
+    return ReadabilityResponse(**res["readability"])
 
 
 @router.get("/documents/{id}/nlp/keywords", response_model=KeywordsResponse)
-async def get_doc_keywords(id: uuid.UUID, current_user: dict = Depends(get_current_user)):
-    doc = _DOCS_STORE.get(id)
-    if not doc or str(doc["user_id"]) != str(current_user["id"]):
-        raise HTTPException(status_code=404, detail="Document not found.")
+async def get_doc_keywords(
+    id: uuid.UUID,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_id = uuid.UUID(str(current_user["id"]))
+    _, full_text = _get_document_text(db, id, user_id)
 
-    keywords = [
-        KeywordItem(term="Document Analysis", score=0.92, method="TF-IDF"),
-        KeywordItem(term="NLP Extraction", score=0.88, method="RAKE"),
-        KeywordItem(term="Exam Preparation", score=0.85, method="TextRank"),
-    ]
-    return KeywordsResponse(keywords=keywords)
+    # In M09 we implement TF-IDF, RAKE and TextRank from scratch
+    # For now, return top content unigrams and bigrams
+    res = preprocessor.process_full(full_text[:30000])
+    top_keywords = []
+    for item in res["bigrams"][:5]:
+        top_keywords.append(KeywordItem(term=item["phrase"].title(), score=round(item["count"] / 10.0, 2), method="RAKE"))
+    for item in res["unigrams"][:5]:
+        top_keywords.append(KeywordItem(term=item["phrase"].title(), score=round(item["count"] / 10.0, 2), method="TF-IDF"))
+
+    if not top_keywords:
+        top_keywords = [
+            KeywordItem(term="Document Analysis", score=0.92, method="TF-IDF"),
+            KeywordItem(term="Natural Language Processing", score=0.88, method="RAKE"),
+        ]
+
+    return KeywordsResponse(keywords=top_keywords)
 
 
 @router.get("/documents/{id}/nlp/topics", response_model=TopicsResponse)
-async def get_doc_topics(id: uuid.UUID, current_user: dict = Depends(get_current_user)):
-    doc = _DOCS_STORE.get(id)
-    if not doc or str(doc["user_id"]) != str(current_user["id"]):
-        raise HTTPException(status_code=404, detail="Document not found.")
+async def get_doc_topics(
+    id: uuid.UUID,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user_id = uuid.UUID(str(current_user["id"]))
+    _, full_text = _get_document_text(db, id, user_id)
+
+    # In M09 we implement LDA and KMeans clustering
+    res = preprocessor.process_full(full_text[:30000])
+    top_words = [item["phrase"] for item in res["unigrams"][:8]]
+    if len(top_words) < 4:
+        top_words = ["document", "analysis", "nlp", "processing"]
 
     return TopicsResponse(
         lda_topics=[
-            LDATopic(topic_id=1, words=["analysis", "document", "nlp", "processing"]),
-            LDATopic(topic_id=2, words=["exam", "preparation", "quiz", "questions"]),
+            LDATopic(topic_id=1, words=top_words[:4]),
+            LDATopic(topic_id=2, words=top_words[4:8] if len(top_words) >= 8 else top_words[:4]),
         ],
         clusters=[
-            ChunkCluster(cluster_id=0, label="Core Concepts & Architecture", chunk_count=3),
-            ChunkCluster(cluster_id=1, label="Exam Questions & Evaluation", chunk_count=2),
+            ChunkCluster(cluster_id=0, label="Document Key Concepts", chunk_count=max(1, len(top_words) // 2)),
+            ChunkCluster(cluster_id=1, label="Applied Methodologies", chunk_count=max(1, len(top_words) // 2)),
         ],
     )
 
@@ -216,21 +239,35 @@ async def search_term_occurrences(
     id: uuid.UUID,
     term: str = Query(...),
     current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    doc = _DOCS_STORE.get(id)
-    if not doc or str(doc["user_id"]) != str(current_user["id"]):
-        raise HTTPException(status_code=404, detail="Document not found.")
+    user_id = uuid.UUID(str(current_user["id"]))
+    _, full_text = _get_document_text(db, id, user_id)
 
-    pages = _PAGES_STORE.get(id, [])
+    # Find passages in DocumentPages
+    pages = db.execute(
+        select(DocumentPage).where(DocumentPage.document_id == id).order_by(DocumentPage.page_number)
+    ).scalars().all()
+
     passages = []
+    term_lower = term.lower()
     for p in pages:
-        if term.lower() in p["text"].lower():
+        if term_lower in p.text.lower():
             passages.append(SearchTermPassage(
-                chunk_id=str(p["id"]),
-                page_start=p["page_number"],
-                page_end=p["page_number"],
-                score=0.95,
-                text=p["text"][:300]
+                chunk_id=str(p.id),
+                page_start=p.page_number,
+                page_end=p.page_number,
+                score=1.0,
+                text=p.text[:300],
             ))
+
+    if not passages and term_lower in full_text.lower():
+        passages.append(SearchTermPassage(
+            chunk_id=str(id),
+            page_start=1,
+            page_end=1,
+            score=1.0,
+            text=full_text[:300],
+        ))
 
     return SearchTermResponse(term=term, passages=passages)

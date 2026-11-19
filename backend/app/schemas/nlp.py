@@ -95,3 +95,14 @@ class SearchTermPassage(BaseModel):
 class SearchTermResponse(BaseModel):
     term: str
     passages: List[SearchTermPassage]
+
+
+class ReadabilityResponse(BaseModel):
+    flesch_reading_ease: float
+    flesch_reading_ease_label: str
+    flesch_kincaid_grade: float
+    gunning_fog: float
+    coleman_liau: float
+    automated_readability_index: float
+    type_token_ratio: float
+    average_sentence_length: float
