@@ -1,0 +1,6 @@
+Model,Architecture,Parameters,Year,EvaluationScore
+BERT,Transformer Encoder,110M,2018,80.5
+RoBERTa,Transformer Encoder,125M,2019,88.2
+DistilBERT,Transformer Encoder,66M,2019,77.0
+T5-Base,Encoder-Decoder,220M,2020,83.4
+FLAN-T5,Instruction Tuned,250M,2022,86.1

@@ -22,11 +22,14 @@ def test_openapi_schema_generation():
 
 @pytest.mark.asyncio
 async def test_full_api_routers_flow():
+    import uuid
+    uid = uuid.uuid4().hex[:8]
+    test_email = f"sarah_{uid}@university.edu"
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         # 1. Register a new user
         reg_res = await client.post("/api/v1/auth/register", json={
-            "email": "sarah@university.edu",
+            "email": test_email,
             "password": "StrongPassword123!",
             "full_name": "Sarah Connor",
         })
@@ -37,7 +40,7 @@ async def test_full_api_routers_flow():
 
         # 2. Duplicate registration should return 400
         dup_res = await client.post("/api/v1/auth/register", json={
-            "email": "sarah@university.edu",
+            "email": test_email,
             "password": "StrongPassword123!",
             "full_name": "Sarah Connor",
         })
@@ -45,7 +48,7 @@ async def test_full_api_routers_flow():
 
         # 3. Test Login
         login_res = await client.post("/api/v1/auth/login", json={
-            "email": "sarah@university.edu",
+            "email": test_email,
             "password": "StrongPassword123!",
         })
         assert login_res.status_code == 200
@@ -58,7 +61,7 @@ async def test_full_api_routers_flow():
         # Profile with auth
         profile_res = await client.get("/api/v1/users/me", headers=auth_headers)
         assert profile_res.status_code == 200
-        assert profile_res.json()["email"] == "sarah@university.edu"
+        assert profile_res.json()["email"] == test_email
 
         # 5. Adhoc Preprocess NLP
         nlp_res = await client.post("/api/v1/nlp/preprocess", json={
