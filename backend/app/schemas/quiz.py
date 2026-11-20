@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class QuestionGenerateRequest(BaseModel):
@@ -74,14 +74,49 @@ class QuizResponseInput(BaseModel):
     marked_for_review: bool = False
 
 
+class SingleQuizResponseInput(BaseModel):
+    quiz_question_id: uuid.UUID
+    selected_answer: Optional[str] = None
+    user_answer: Optional[str] = None
+    marked_for_review: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def unify_answer_field(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if not values.get("selected_answer") and values.get("user_answer"):
+                values["selected_answer"] = values.get("user_answer")
+        return values
+
+
+class SingleQuizResponseOut(BaseModel):
+    quiz_question_id: uuid.UUID
+    is_correct: bool
+    correct_answer: str
+    explanation: Optional[str] = None
+    source_page: Optional[int] = None
+    score: float = 0.0
+    feedback: Optional[str] = None
+    key_points_covered: List[str] = []
+    key_points_missed: List[str] = []
+
+
 class QuizSubmitRequest(BaseModel):
-    responses: List[QuizResponseInput]
+    responses: Optional[List[QuizResponseInput]] = None
     time_taken_seconds: int
 
 
 class RecommendationItem(BaseModel):
     topic: str
     accuracy: float
+
+
+class TopicPerformanceItem(BaseModel):
+    topic: str
+    correct: int
+    total: int
+    accuracy: float
+    status: str # Mastered, In Review, Weak
 
 
 class QuizQuestionResult(BaseModel):
@@ -92,6 +127,10 @@ class QuizQuestionResult(BaseModel):
     is_correct: bool
     explanation: Optional[str] = None
     source_page: Optional[int] = None
+    score: Optional[float] = 1.0
+    feedback: Optional[str] = None
+    key_points_covered: Optional[List[str]] = []
+    key_points_missed: Optional[List[str]] = []
 
 
 class QuizResultResponse(BaseModel):
@@ -101,5 +140,6 @@ class QuizResultResponse(BaseModel):
     total: int
     accuracy: float
     time_taken_seconds: int
+    topic_performance: List[TopicPerformanceItem] = []
     recommendations: List[RecommendationItem] = []
     responses: List[QuizQuestionResult] = []

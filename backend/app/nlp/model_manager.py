@@ -98,7 +98,10 @@ class ModelManager:
         logger.info(f"Loading SentenceTransformer: {target_model}...")
         try:
             from sentence_transformers import SentenceTransformer
-            self._embedding_model = SentenceTransformer(target_model, device=self.device)
+            try:
+                self._embedding_model = SentenceTransformer(target_model, device=self.device, local_files_only=True)
+            except Exception:
+                self._embedding_model = SentenceTransformer(target_model, device=self.device)
             logger.info(f"SentenceTransformer {target_model} loaded successfully.")
             return self._embedding_model
         except Exception as e:

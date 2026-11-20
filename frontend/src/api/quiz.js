@@ -21,6 +21,14 @@ export const quizApi = {
     const response = await apiClient.post(`/quizzes/${quizId}/attempts`);
     return response.data;
   },
+  submitQuestionResponse: async (attemptId, questionId, selectedAnswer, markedForReview = false) => {
+    const response = await apiClient.post(`/attempts/${attemptId}/responses`, {
+      quiz_question_id: questionId,
+      selected_answer: selectedAnswer,
+      marked_for_review: markedForReview,
+    });
+    return response.data;
+  },
   submitAttempt: async (attemptId, answers, timeTaken) => {
     const response = await apiClient.post(`/attempts/${attemptId}/submit`, {
       responses: answers,

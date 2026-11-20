@@ -1,0 +1,631 @@
+{
+  "mcq": [
+    {
+      "type": "mcq",
+      "difficulty": "medium",
+      "question": "What is the maximum allowed hop count for a valid route in the Routing Information Protocol (RIP)?",
+      "options": [
+        "16",
+        "15",
+        "14",
+        "10"
+      ],
+      "correct_answer": "15",
+      "explanation": "In RIP, any valid route in an Autonomous System cannot have more than 15 hops before it is considered inaccessible (Page 3).",
+      "page": 3,
+      "source_chunk_id": "7fd65267-da5e-4cf5-98b8-9b0004acedfd",
+      "quality_score": 0.95,
+      "topic": "Hop Count",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "type": "mcq",
+      "difficulty": "medium",
+      "question": "Which routing algorithm is the Open Shortest Path First (OSPF) protocol based on?",
+      "options": [
+        "Link state routing",
+        "multiple routing tables",
+        "reserved field",
+        "routing tables"
+      ],
+      "correct_answer": "Link state routing",
+      "explanation": "OSPF is an open intradomain routing protocol based on link state routing (Page 10).",
+      "page": 10,
+      "source_chunk_id": "c3d160f7-936e-4d1e-8a55-09b2eb80b4a6",
+      "quality_score": 0.95,
+      "topic": "Open Shortest Path First (OSPF)",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "question": "Which specific join type automatically matches tuples that share the same values for all common attributes while retaining only a single copy of each common column?",
+      "options": [
+        "Natural join",
+        "Cartesian join",
+        "Cross join",
+        "Union join"
+      ],
+      "correct_answer": "Natural join",
+      "explanation": "A natural join matches tuples with the same values for all common attributes and retains only one copy of each common column. (Documented on Page 4)",
+      "type": "mcq",
+      "difficulty": "medium",
+      "page": 4,
+      "topic": "Core Concepts",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "quality_score": 0.98,
+      "source_document": "ch4.pdf"
+    },
+    {
+      "question": "What potential hazard should database designers beware of when using natural joins in SQL?",
+      "options": [
+        "Unrelated attributes with the same name getting equated incorrectly.",
+        "Automatic deletion of foreign key constraints across tables.",
+        "Mandatory inclusion of administrator privileges in the from clause.",
+        "Permanent corruption of the underlying database schema."
+      ],
+      "correct_answer": "Unrelated attributes with the same name getting equated incorrectly.",
+      "explanation": "Users must beware of unrelated attributes sharing the same name which can get equated incorrectly during a natural join operation. (Documented on Page 9)",
+      "type": "mcq",
+      "difficulty": "medium",
+      "page": 9,
+      "topic": "Core Concepts",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "quality_score": 0.98,
+      "source_document": "ch4.pdf"
+    },
+    {
+      "type": "mcq",
+      "difficulty": "medium",
+      "question": "Which SQL statement is used to define a virtual relation (view) in a database?",
+      "options": [
+        "full outer join",
+        "left outer join",
+        "alteration allows addition",
+        "create view"
+      ],
+      "correct_answer": "create view",
+      "explanation": "Views are virtual relations defined using the 'create view <name> as <query>' statement (Page 20).",
+      "page": 20,
+      "source_chunk_id": "5fa13b3d-be10-4ae4-8b4b-2230151157bb",
+      "quality_score": 0.95,
+      "topic": "View Definition",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "type": "mcq",
+      "difficulty": "medium",
+      "question": "What is the primary purpose of the GRANT statement in SQL authorization?",
+      "options": [
+        "natural join natural join",
+        "domain types types",
+        "clause join condition defines",
+        "To confer privileges such as read, insert, update, or delete to specified users or roles"
+      ],
+      "correct_answer": "To confer privileges such as read, insert, update, or delete to specified users or roles",
+      "explanation": "The GRANT statement is used to allocate security privileges and authorizations to database users or roles (Page 51).",
+      "page": 51,
+      "source_chunk_id": "256914ef-a5a5-4836-a3b6-686e929cb7aa",
+      "quality_score": 0.95,
+      "topic": "Authorization Specification in SQL",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "question": "Which transport layer protocol establishes a connection with the destination machine before delivering packets?",
+      "options": [
+        "User Datagram Protocol (UDP)",
+        "Transmission Control Protocol (TCP)",
+        "Internet Protocol (IP)",
+        "Address Resolution Protocol (ARP)"
+      ],
+      "correct_answer": "Transmission Control Protocol (TCP)",
+      "explanation": "TCP is a connection-oriented transport layer protocol that makes a connection with the transport layer at the destination machine first before delivering the packets. (Documented on Page 3)",
+      "type": "mcq",
+      "difficulty": "medium",
+      "page": 3,
+      "topic": "Core Concepts",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "quality_score": 0.98,
+      "source_document": "Unit 4 Transport Layer.pptx"
+    },
+    {
+      "question": "What is the specific range of port numbers assigned and controlled by the Internet Assigned Number Authority (IANA) as well-known ports?",
+      "options": [
+        "0 to 1023",
+        "1024 to 49151",
+        "49152 to 65535",
+        "0 to 65535"
+      ],
+      "correct_answer": "0 to 1023",
+      "explanation": "The ports ranging from 0 to 1023 are assigned and controlled by IANA as well-known ports. (Documented on Page 10)",
+      "type": "mcq",
+      "difficulty": "medium",
+      "page": 10,
+      "topic": "Core Concepts",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "quality_score": 0.98,
+      "source_document": "Unit 4 Transport Layer.pptx"
+    },
+    {
+      "question": "Which combination of elements uniquely defines a process at the transport layer by serving as a socket address?",
+      "options": [
+        "MAC address and port number",
+        "IP address and port number",
+        "Host name and MAC address",
+        "Port number and sequence number"
+      ],
+      "correct_answer": "IP address and port number",
+      "explanation": "A socket address is defined as the combination of an IP address and a port number, which uniquely identifies a client or server process. (Documented on Page 11)",
+      "type": "mcq",
+      "difficulty": "medium",
+      "page": 11,
+      "topic": "Core Concepts",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "quality_score": 0.98,
+      "source_document": "Unit 4 Transport Layer.pptx"
+    },
+    {
+      "question": "How does the transport layer handle multiple processes sending packets from a single sender host?",
+      "options": [
+        "Through demultiplexing, representing a one-to-many relationship",
+        "Through multiplexing, representing a many-to-one relationship",
+        "Through connection-oriented error control",
+        "Through independent packet datagram routing"
+      ],
+      "correct_answer": "Through multiplexing, representing a many-to-one relationship",
+      "explanation": "At the sender site, several processes needing to send packets through one transport layer protocol creates a many-to-one relationship that requires multiplexing. (Documented on Page 13)",
+      "type": "mcq",
+      "difficulty": "medium",
+      "page": 13,
+      "topic": "Core Concepts",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "quality_score": 0.98,
+      "source_document": "Unit 4 Transport Layer.pptx"
+    }
+  ],
+  "true_false": [
+    {
+      "type": "true_false",
+      "difficulty": "medium",
+      "question": "True or False: the maximum allowed hop count for a valid route in the Routing Information Protocol (RIP) is 15.",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answer": "True",
+      "explanation": "Confirmed directly by document definition on Page 3.",
+      "page": 3,
+      "source_chunk_id": "7fd65267-da5e-4cf5-98b8-9b0004acedfd",
+      "quality_score": 0.95,
+      "topic": "Hop Count",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "type": "true_false",
+      "difficulty": "medium",
+      "question": "True or False: send routing updates operates primarily to OSPF is an open intradomain routing protocol based on link state routing (Page 10)..",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answer": "False",
+      "explanation": "False. The mechanism described belongs to Link state routing, not send routing updates (Page 10).",
+      "page": 10,
+      "source_chunk_id": "c3d160f7-936e-4d1e-8a55-09b2eb80b4a6",
+      "quality_score": 0.95,
+      "topic": "Open Shortest Path First (OSPF)",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "type": "true_false",
+      "difficulty": "medium",
+      "question": "True or False: The Routing Information Protocol (RIP) is an intradomain routing protocol used inside an Autonomous System (AS).",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answer": "True",
+      "explanation": "Directly confirmed in source text on Page 2.",
+      "page": 2,
+      "quality_score": 0.92,
+      "topic": "Routing Information Protocol (RIP)",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "type": "true_false",
+      "difficulty": "medium",
+      "question": "True or False: Considerations: In an AS, we are dealing with routers and networks (links).",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answer": "True",
+      "explanation": "Directly confirmed in source text on Page 2.",
+      "page": 2,
+      "quality_score": 0.92,
+      "topic": "Routing Information Protocol (RIP)",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "type": "true_false",
+      "difficulty": "medium",
+      "question": "True or False: create view is defined as Views are virtual relations defined using the 'create view <name> as <query>' statement (Page 20)..",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answer": "True",
+      "explanation": "Confirmed directly by document definition on Page 20.",
+      "page": 20,
+      "source_chunk_id": "5fa13b3d-be10-4ae4-8b4b-2230151157bb",
+      "quality_score": 0.95,
+      "topic": "View Definition",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "type": "true_false",
+      "difficulty": "medium",
+      "question": "True or False: time slot id varchar operates primarily to Views are virtual relations defined using the 'create view <name> as <query>' statement (Page 20)..",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answer": "False",
+      "explanation": "False. The mechanism described belongs to create view, not time slot id varchar (Page 20).",
+      "page": 20,
+      "source_chunk_id": "5fa13b3d-be10-4ae4-8b4b-2230151157bb",
+      "quality_score": 0.95,
+      "topic": "View Definition",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "type": "true_false",
+      "difficulty": "medium",
+      "question": "True or False: To confer privileges such as read, insert, update, or delete to specified users or roles is defined as The GRANT statement is used to allocate security privileges and authorizations to database users or roles (Page 51)..",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answer": "True",
+      "explanation": "Confirmed directly by document definition on Page 51.",
+      "page": 51,
+      "source_chunk_id": "256914ef-a5a5-4836-a3b6-686e929cb7aa",
+      "quality_score": 0.95,
+      "topic": "Authorization Specification in SQL",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "type": "true_false",
+      "difficulty": "medium",
+      "question": "True or False: time slot id varchar operates primarily to The GRANT statement is used to allocate security privileges and authorizations to database users or roles (Page 51)..",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answer": "False",
+      "explanation": "False. The mechanism described belongs to To confer privileges such as read, insert, update, or delete to specified users or roles, not time slot id varchar (Page 51).",
+      "page": 51,
+      "source_chunk_id": "256914ef-a5a5-4836-a3b6-686e929cb7aa",
+      "quality_score": 0.95,
+      "topic": "Authorization Specification in SQL",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "type": "true_false",
+      "difficulty": "medium",
+      "question": "True or False: 0 to 1023 is defined as IANA controls and assigns the well-known ports ranging from 0 to 1023 for standard server services (Page 10)..",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answer": "True",
+      "explanation": "Confirmed directly by document definition on Page 10.",
+      "page": 10,
+      "source_chunk_id": "166d7e6b-9593-49a4-8d63-79799adeb880",
+      "quality_score": 0.95,
+      "topic": "Client/Server Paradigm: IANA Ranges",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "Unit 4 Transport Layer.pptx"
+    },
+    {
+      "type": "true_false",
+      "difficulty": "medium",
+      "question": "True or False: transport layer software running operates primarily to A socket address uniquely defines a network process through the combination of an IP address and a port number (Page 11)..",
+      "options": [
+        "True",
+        "False"
+      ],
+      "correct_answer": "False",
+      "explanation": "False. The mechanism described belongs to An IP address and a port number, not transport layer software running (Page 11).",
+      "page": 11,
+      "source_chunk_id": "61730f8d-39ef-421d-93d5-ac916eebca99",
+      "quality_score": 0.95,
+      "topic": "Client/Server Paradigm: Socket Address",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "Unit 4 Transport Layer.pptx"
+    }
+  ],
+  "fill_blank": [
+    {
+      "type": "fill_blank",
+      "difficulty": "medium",
+      "question": "Fill in the blank: The ___ (RIP) is an intradomain routing protocol used inside an Autonomous System (AS).",
+      "options": [],
+      "correct_answer": "routing information protocol",
+      "explanation": "Full context from Page 2: The Routing Information Protocol (RIP) is an intradomain routing protocol used inside an Autonomous System (AS).",
+      "page": 2,
+      "quality_score": 0.92,
+      "topic": "Routing Information Protocol (RIP)",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "type": "fill_blank",
+      "difficulty": "medium",
+      "question": "Fill in the blank: The routers have ___s; networks do not.",
+      "options": [],
+      "correct_answer": "routing table",
+      "explanation": "Full context from Page 2: The routers have routing tables; networks do not.",
+      "page": 2,
+      "quality_score": 0.92,
+      "topic": "Routing Information Protocol (RIP)",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "type": "fill_blank",
+      "difficulty": "medium",
+      "question": "Fill in the blank: The destination in a ___ is a network, first column defines a network address.",
+      "options": [],
+      "correct_answer": "routing table",
+      "explanation": "Full context from Page 2: The destination in a routing table is a network, first column defines a network address.",
+      "page": 2,
+      "quality_score": 0.92,
+      "topic": "Routing Information Protocol (RIP)",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "type": "fill_blank",
+      "difficulty": "medium",
+      "question": "Fill in the blank: Metric in RIP is called a ___ (number of links (networks) to reach the destination).",
+      "options": [],
+      "correct_answer": "hop count",
+      "explanation": "Full context from Page 2: Metric in RIP is called a hop count (number of links (networks) to reach the destination).",
+      "page": 2,
+      "quality_score": 0.92,
+      "topic": "Routing Information Protocol (RIP)",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "type": "fill_blank",
+      "difficulty": "medium",
+      "question": "Fill in the blank: ___ is defined as Cartesian product which requires that tuples in the two relations match (under some condition).",
+      "options": [],
+      "correct_answer": "A Join Operation",
+      "explanation": "According to the source document on Page 3, A Join Operation is defined as: Cartesian product which requires that tuples in the two relations match (under some condition).",
+      "page": 3,
+      "source_chunk_id": "16f25018-a467-496a-a994-4206a6837915",
+      "quality_score": 0.95,
+      "topic": "Joined Relations",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "type": "fill_blank",
+      "difficulty": "medium",
+      "question": "Fill in the blank: ___ is a Cartesian product which requires that tuples in the two relations match (under some condition).",
+      "options": [],
+      "correct_answer": "A Join Operation",
+      "explanation": "Full context from Page 3: A join operation is a Cartesian product which requires that tuples in the two relations match (under some condition).",
+      "page": 3,
+      "quality_score": 0.92,
+      "topic": "Joined Relations",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "type": "fill_blank",
+      "difficulty": "medium",
+      "question": "Fill in the blank: ___ with the same values for all common attributes, and retains only one copy of each common column.",
+      "options": [],
+      "correct_answer": "natural join matches tuples",
+      "explanation": "Full context from Page 4: Natural join matches tuples with the same values for all common attributes, and retains only one copy of each common column.",
+      "page": 4,
+      "quality_score": 0.92,
+      "topic": "\u00a9Silberschatz, Korth and Sudarshan",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "type": "fill_blank",
+      "difficulty": "medium",
+      "question": "Fill in the blank: The from clause in can have ___ A1, A2, \u2026 An",
+      "options": [],
+      "correct_answer": "multiple relations combined select",
+      "explanation": "Full context from Page 5: The from clause in can have multiple relations combined select A1, A2, \u2026 An",
+      "page": 5,
+      "quality_score": 0.92,
+      "topic": "Natural Join in SQL (Cont.)",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "question": "At the transport layer, a transport layer address known as a ___ is required to choose among multiple processes running on the destination host.",
+      "options": [],
+      "correct_answer": "port number",
+      "explanation": "A port number is used at the transport layer to identify and choose among multiple processes running on a destination host. (Documented on Page 9)",
+      "type": "fill_blank",
+      "difficulty": "medium",
+      "page": 9,
+      "topic": "Core Concepts",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "quality_score": 0.98,
+      "source_document": "Unit 4 Transport Layer.pptx"
+    },
+    {
+      "question": "The combination of an IP address and a port number defines a ___ address, which uniquely identifies a client or server process.",
+      "options": [],
+      "correct_answer": "socket",
+      "explanation": "A socket address is defined as the combination of an IP address and a port number at each end to make a connection. (Documented on Page 11)",
+      "type": "fill_blank",
+      "difficulty": "medium",
+      "page": 11,
+      "topic": "Core Concepts",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "quality_score": 0.98,
+      "source_document": "Unit 4 Transport Layer.pptx"
+    }
+  ],
+  "short_answer": [
+    {
+      "type": "short_answer",
+      "difficulty": "medium",
+      "question": "Explain the core function and definition of 15.",
+      "options": [],
+      "correct_answer": "15 is defined as In RIP, any valid route in an Autonomous System cannot have more than 15 hops before it is considered inaccessible (Page 3)..",
+      "explanation": "Reference model answer documented on Page 3: 15 is defined as In RIP, any valid route in an Autonomous System cannot have more than 15 hops before it is considered inaccessible (Page 3)..",
+      "page": 3,
+      "source_chunk_id": "7fd65267-da5e-4cf5-98b8-9b0004acedfd",
+      "quality_score": 0.95,
+      "topic": "Hop Count",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "type": "short_answer",
+      "difficulty": "medium",
+      "question": "Explain the core function and definition of Link state routing.",
+      "options": [],
+      "correct_answer": "Link state routing is defined as OSPF is an open intradomain routing protocol based on link state routing (Page 10)..",
+      "explanation": "Reference model answer documented on Page 10: Link state routing is defined as OSPF is an open intradomain routing protocol based on link state routing (Page 10)..",
+      "page": 10,
+      "source_chunk_id": "c3d160f7-936e-4d1e-8a55-09b2eb80b4a6",
+      "quality_score": 0.95,
+      "topic": "Open Shortest Path First (OSPF)",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "type": "short_answer",
+      "difficulty": "medium",
+      "question": "Explain the principle and operational role of routing information protocol.",
+      "options": [],
+      "correct_answer": "The Routing Information Protocol (RIP) is an intradomain routing protocol used inside an Autonomous System (AS).",
+      "explanation": "Model answer derived from Page 2: The Routing Information Protocol (RIP) is an intradomain routing protocol used inside an Autonomous System (AS).",
+      "page": 2,
+      "quality_score": 0.92,
+      "topic": "Routing Information Protocol (RIP)",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "type": "short_answer",
+      "difficulty": "medium",
+      "question": "Explain the principle and operational role of routing table.",
+      "options": [],
+      "correct_answer": "The routers have routing tables; networks do not.",
+      "explanation": "Model answer derived from Page 2: The routers have routing tables; networks do not.",
+      "page": 2,
+      "quality_score": 0.92,
+      "topic": "Routing Information Protocol (RIP)",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "RIP_OSPF.pptx"
+    },
+    {
+      "type": "short_answer",
+      "difficulty": "medium",
+      "question": "Explain the core function and definition of create view.",
+      "options": [],
+      "correct_answer": "create view is defined as Views are virtual relations defined using the 'create view <name> as <query>' statement (Page 20)..",
+      "explanation": "Reference model answer documented on Page 20: create view is defined as Views are virtual relations defined using the 'create view <name> as <query>' statement (Page 20)..",
+      "page": 20,
+      "source_chunk_id": "5fa13b3d-be10-4ae4-8b4b-2230151157bb",
+      "quality_score": 0.95,
+      "topic": "View Definition",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "type": "short_answer",
+      "difficulty": "medium",
+      "question": "Explain the core function and definition of To confer privileges such as read, insert, update, or delete to specified users or roles.",
+      "options": [],
+      "correct_answer": "To confer privileges such as read, insert, update, or delete to specified users or roles is defined as The GRANT statement is used to allocate security privileges and authorizations to database users or roles (Page 51)..",
+      "explanation": "Reference model answer documented on Page 51: To confer privileges such as read, insert, update, or delete to specified users or roles is defined as The GRANT statement is used to allocate security privileges and authorizations to database users or roles (Page 51)..",
+      "page": 51,
+      "source_chunk_id": "256914ef-a5a5-4836-a3b6-686e929cb7aa",
+      "quality_score": 0.95,
+      "topic": "Authorization Specification in SQL",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "type": "short_answer",
+      "difficulty": "medium",
+      "question": "Explain the core function and definition of A Join Operation.",
+      "options": [],
+      "correct_answer": "A Join Operation is defined as Cartesian product which requires that tuples in the two relations match (under some condition).",
+      "explanation": "Reference model answer documented on Page 3: A Join Operation is defined as Cartesian product which requires that tuples in the two relations match (under some condition).",
+      "page": 3,
+      "source_chunk_id": "16f25018-a467-496a-a994-4206a6837915",
+      "quality_score": 0.95,
+      "topic": "Joined Relations",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "type": "short_answer",
+      "difficulty": "medium",
+      "question": "Explain the core function and definition of View Definition.",
+      "options": [],
+      "correct_answer": "View Definition is defined as not the same as creating a new relation by evaluating the query expression Rather, a view definition causes the saving of an expression; the expression is substituted into queries using the view.",
+      "explanation": "Reference model answer documented on Page 20: View Definition is defined as not the same as creating a new relation by evaluating the query expression Rather, a view definition causes the saving of an expression; the expression is substituted into queries using the view.",
+      "page": 20,
+      "source_chunk_id": "5fa13b3d-be10-4ae4-8b4b-2230151157bb",
+      "quality_score": 0.95,
+      "topic": "View Definition",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "ch4.pdf"
+    },
+    {
+      "type": "short_answer",
+      "difficulty": "medium",
+      "question": "Explain the core function and definition of 0 to 1023.",
+      "options": [],
+      "correct_answer": "0 to 1023 is defined as IANA controls and assigns the well-known ports ranging from 0 to 1023 for standard server services (Page 10)..",
+      "explanation": "Reference model answer documented on Page 10: 0 to 1023 is defined as IANA controls and assigns the well-known ports ranging from 0 to 1023 for standard server services (Page 10)..",
+      "page": 10,
+      "source_chunk_id": "166d7e6b-9593-49a4-8d63-79799adeb880",
+      "quality_score": 0.95,
+      "topic": "Client/Server Paradigm: IANA Ranges",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "Unit 4 Transport Layer.pptx"
+    },
+    {
+      "type": "short_answer",
+      "difficulty": "medium",
+      "question": "Explain the core function and definition of An IP address and a port number.",
+      "options": [],
+      "correct_answer": "An IP address and a port number is defined as A socket address uniquely defines a network process through the combination of an IP address and a port number (Page 11)..",
+      "explanation": "Reference model answer documented on Page 11: An IP address and a port number is defined as A socket address uniquely defines a network process through the combination of an IP address and a port number (Page 11)..",
+      "page": 11,
+      "source_chunk_id": "61730f8d-39ef-421d-93d5-ac916eebca99",
+      "quality_score": 0.95,
+      "topic": "Client/Server Paradigm: Socket Address",
+      "provider_notice": "Processed using external Gemini API. Note: Document passages were sent externally.",
+      "source_document": "Unit 4 Transport Layer.pptx"
+    }
+  ]
+}

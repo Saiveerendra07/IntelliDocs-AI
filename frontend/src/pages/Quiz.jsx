@@ -21,7 +21,10 @@ export const Quiz = () => {
   const [attemptId, setAttemptId] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState({}); // { [qId]: selectedOption }
+  const [answers, setAnswers] = useState({}); // { [qId]: selectedAnswer }
+  const [textInputs, setTextInputs] = useState({}); // { [qId]: string }
+  const [evaluations, setEvaluations] = useState({}); // { [qId]: serverEvaluationResponse }
+  const [evaluating, setEvaluating] = useState({}); // { [qId]: boolean }
   const [locked, setLocked] = useState({}); // { [qId]: boolean }
   const [markedForReview, setMarkedForReview] = useState(new Set());
   const [timeLeft, setTimeLeft] = useState(600);
@@ -62,19 +65,31 @@ export const Quiz = () => {
   const currentQ = questions[currentIndex];
   const isCurrentLocked = !!locked[currentQ?.id];
   const currentSelected = answers[currentQ?.id];
+  const currentEval = evaluations[currentQ?.id];
+  const isEvaluating = !!evaluating[currentQ?.id];
 
-  const handleSelectOption = (option) => {
-    if (!currentQ || isCurrentLocked) return;
+  const handleAnswerSubmit = async (qId, answerValue) => {
+    if (!answerValue || locked[qId] || evaluating[qId]) return;
 
-    // Record answer and immediately lock this question to reveal feedback
-    setAnswers((prev) => ({
-      ...prev,
-      [currentQ.id]: option,
-    }));
-    setLocked((prev) => ({
-      ...prev,
-      [currentQ.id]: true,
-    }));
+    setAnswers((prev) => ({ ...prev, [qId]: answerValue }));
+    setEvaluating((prev) => ({ ...prev, [qId]: true }));
+
+    try {
+      const evalRes = await quizApi.submitQuestionResponse(
+        attemptId,
+        qId,
+        answerValue,
+        markedForReview.has(qId)
+      );
+      setEvaluations((prev) => ({ ...prev, [qId]: evalRes }));
+      setLocked((prev) => ({ ...prev, [qId]: true }));
+    } catch (err) {
+      console.error('Server answer evaluation failed:', err);
+      // Offline / fallback lock
+      setLocked((prev) => ({ ...prev, [qId]: true }));
+    } finally {
+      setEvaluating((prev) => ({ ...prev, [qId]: false }));
+    }
   };
 
   const toggleMarkForReview = () => {
@@ -126,8 +141,9 @@ export const Quiz = () => {
     );
   }
 
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = Object.keys(locked).length;
   const progressPercent = Math.round(((currentIndex + 1) / (questions.length || 1)) * 100);
+  const qType = (currentQ?.type || 'mcq').toLowerCase();
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -169,79 +185,247 @@ export const Quiz = () => {
             </div>
 
             {/* Question Stem */}
-            <h2 className="text-base md:text-lg font-bold text-slate-900 dark:text-white leading-relaxed mb-6">
-              {currentQ?.question}
-            </h2>
-
-            {/* Options List */}
-            <div className="space-y-3">
-              {(currentQ?.options || ['True', 'False']).map((opt, i) => {
-                const isSelected = currentSelected === opt;
-                const isCorrect = opt === currentQ?.correct_answer;
-
-                let optClass = 'border-slate-200 dark:border-surface-darkBorder bg-slate-50/40 dark:bg-slate-900/40 text-slate-800 dark:text-slate-200 hover:border-slate-300';
-                let iconClass = 'border-slate-300 dark:border-slate-600 text-slate-400';
-
-                if (isCurrentLocked) {
-                  if (isCorrect) {
-                    optClass = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 ring-1 ring-emerald-500 font-semibold';
-                    iconClass = 'border-emerald-500 bg-emerald-500 text-white';
-                  } else if (isSelected && !isCorrect) {
-                    optClass = 'border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-100 ring-1 ring-rose-500 font-semibold';
-                    iconClass = 'border-rose-500 bg-rose-500 text-white';
-                  } else {
-                    optClass = 'border-slate-200 dark:border-surface-darkBorder opacity-50 cursor-not-allowed';
-                  }
-                }
-
-                return (
-                  <button
-                    key={i}
-                    disabled={isCurrentLocked}
-                    onClick={() => handleSelectOption(opt)}
-                    className={`w-full flex items-center justify-between rounded-xl p-3.5 text-sm font-medium text-left border transition-all ${optClass}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-all ${iconClass}`}>
-                        {String.fromCharCode(65 + i)}
-                      </div>
-                      <span>{opt}</span>
-                    </div>
-
-                    {isCurrentLocked && isCorrect && (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 ml-2" />
-                    )}
-                    {isCurrentLocked && isSelected && !isCorrect && (
-                      <XCircle className="h-5 w-5 text-rose-600 shrink-0 ml-2" />
-                    )}
-                  </button>
-                );
-              })}
+            <div className="mb-6 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-primary-100 text-primary-800 dark:bg-primary-950/60 dark:text-primary-300">
+                  {currentQ?.type?.replace('_', ' ') || 'Multiple Choice'}
+                </span>
+                <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  {currentQ?.difficulty || 'Medium'}
+                </span>
+              </div>
+              <h2 className="text-base md:text-lg font-bold text-slate-900 dark:text-white leading-relaxed">
+                {currentQ?.question}
+              </h2>
             </div>
+
+            {/* MCQ Type: 4 options, single choice */}
+            {qType === 'mcq' && (
+              <div className="space-y-3">
+                {(currentQ?.options || []).map((opt, i) => {
+                  const isSelected = currentSelected === opt;
+                  const isCorrect = currentEval?.correct_answer === opt;
+
+                  let optClass = 'border-slate-200 dark:border-surface-darkBorder bg-slate-50/40 dark:bg-slate-900/40 text-slate-800 dark:text-slate-200 hover:border-slate-300';
+                  let iconClass = 'border-slate-300 dark:border-slate-600 text-slate-400';
+
+                  if (isCurrentLocked) {
+                    if (isCorrect) {
+                      optClass = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 ring-1 ring-emerald-500 font-semibold';
+                      iconClass = 'border-emerald-500 bg-emerald-500 text-white';
+                    } else if (isSelected && !isCorrect) {
+                      optClass = 'border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-100 ring-1 ring-rose-500 font-semibold';
+                      iconClass = 'border-rose-500 bg-rose-500 text-white';
+                    } else {
+                      optClass = 'border-slate-200 dark:border-surface-darkBorder opacity-50 cursor-not-allowed';
+                    }
+                  }
+
+                  return (
+                    <button
+                      key={i}
+                      disabled={isCurrentLocked || isEvaluating}
+                      onClick={() => handleAnswerSubmit(currentQ.id, opt)}
+                      className={`w-full flex items-center justify-between rounded-xl p-3.5 text-sm font-medium text-left border transition-all ${optClass}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-all ${iconClass}`}>
+                          {String.fromCharCode(65 + i)}
+                        </div>
+                        <span>{opt}</span>
+                      </div>
+
+                      {isCurrentLocked && isCorrect && (
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 ml-2" />
+                      )}
+                      {isCurrentLocked && isSelected && !isCorrect && (
+                        <XCircle className="h-5 w-5 text-rose-600 shrink-0 ml-2" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* True / False Type: ONLY two buttons, True and False. Never 4 options */}
+            {(qType === 'true_false' || qType === 'boolean') && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {['True', 'False'].map((tf, i) => {
+                  const isSelected = currentSelected?.toLowerCase().startsWith(tf.toLowerCase());
+                  const isCorrect = currentEval?.correct_answer?.toLowerCase().startsWith(tf.toLowerCase());
+
+                  let optClass = 'border-slate-200 dark:border-surface-darkBorder bg-slate-50/40 dark:bg-slate-900/40 text-slate-800 dark:text-slate-200 hover:border-primary-400 hover:bg-primary-50/20';
+                  let iconClass = 'border-slate-300 text-slate-400';
+
+                  if (isCurrentLocked) {
+                    if (isCorrect) {
+                      optClass = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 ring-1 ring-emerald-500 font-semibold';
+                      iconClass = 'border-emerald-500 bg-emerald-500 text-white';
+                    } else if (isSelected && !isCorrect) {
+                      optClass = 'border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-100 ring-1 ring-rose-500 font-semibold';
+                      iconClass = 'border-rose-500 bg-rose-500 text-white';
+                    } else {
+                      optClass = 'border-slate-200 dark:border-surface-darkBorder opacity-50 cursor-not-allowed';
+                    }
+                  }
+
+                  return (
+                    <button
+                      key={i}
+                      disabled={isCurrentLocked || isEvaluating}
+                      onClick={() => handleAnswerSubmit(currentQ.id, tf)}
+                      className={`flex items-center justify-center gap-3 rounded-xl p-6 text-base font-bold border transition-all ${optClass}`}
+                    >
+                      <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-bold transition-all ${iconClass}`}>
+                        {tf[0]}
+                      </div>
+                      <span>{tf}</span>
+                      {isCurrentLocked && isCorrect && (
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 ml-1" />
+                      )}
+                      {isCurrentLocked && isSelected && !isCorrect && (
+                        <XCircle className="h-5 w-5 text-rose-600 shrink-0 ml-1" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Fill-in-the-blank Type: NO options at all. Text input + Check answer */}
+            {(qType === 'fill_blank' || qType === 'fill_in_blank') && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <input
+                    type="text"
+                    disabled={isCurrentLocked || isEvaluating}
+                    value={textInputs[currentQ?.id] || ''}
+                    onChange={(e) => setTextInputs((prev) => ({ ...prev, [currentQ.id]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !isCurrentLocked) {
+                        handleAnswerSubmit(currentQ.id, textInputs[currentQ.id]);
+                      }
+                    }}
+                    placeholder="Type the exact missing term..."
+                    className={`flex-1 rounded-xl border px-4 py-3 text-sm focus:outline-none transition-all ${
+                      isCurrentLocked
+                        ? currentEval?.is_correct
+                          ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-900 font-bold'
+                          : 'border-rose-500 bg-rose-50 dark:bg-rose-950/20 text-rose-900 font-bold'
+                        : 'border-slate-300 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-slate-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500'
+                    }`}
+                  />
+                  {!isCurrentLocked && (
+                    <button
+                      onClick={() => handleAnswerSubmit(currentQ.id, textInputs[currentQ?.id])}
+                      disabled={!textInputs[currentQ?.id]?.trim() || isEvaluating}
+                      className="rounded-xl bg-primary-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-primary-700 disabled:opacity-40 transition-all shrink-0"
+                    >
+                      {isEvaluating ? 'Evaluating...' : 'Check Answer'}
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Tip: Press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[10px]">Enter</kbd> to submit. Spelling tolerance and synonyms accepted.
+                </p>
+              </div>
+            )}
+
+            {/* Short Answer / Long Answer Type: Textarea + Submit Answer */}
+            {['short_answer', 'long_answer', 'conceptual', 'application'].includes(qType) && (
+              <div className="space-y-4">
+                <textarea
+                  rows={4}
+                  disabled={isCurrentLocked || isEvaluating}
+                  value={textInputs[currentQ?.id] || ''}
+                  onChange={(e) => setTextInputs((prev) => ({ ...prev, [currentQ.id]: e.target.value }))}
+                  placeholder="Formulate your complete answer, key definitions, and explanation..."
+                  className={`w-full rounded-xl border p-4 text-sm focus:outline-none transition-all ${
+                    isCurrentLocked
+                      ? currentEval?.is_correct
+                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 text-slate-900 dark:text-white'
+                        : 'border-amber-500 bg-amber-50 dark:bg-amber-950/20 text-slate-900 dark:text-white'
+                      : 'border-slate-300 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-slate-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500'
+                  }`}
+                />
+                {!isCurrentLocked && (
+                  <button
+                    onClick={() => handleAnswerSubmit(currentQ.id, textInputs[currentQ?.id])}
+                    disabled={!textInputs[currentQ?.id]?.trim() || isEvaluating}
+                    className="rounded-xl bg-primary-600 px-6 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-primary-700 disabled:opacity-40 transition-all"
+                  >
+                    {isEvaluating ? 'Grading with NLP...' : 'Submit Answer for Grading'}
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Immediate Feedback & Explanation Callout */}
             {isCurrentLocked && (
-              <div className={`mt-6 rounded-xl p-4 border text-sm leading-relaxed transition-all duration-300 ${
-                currentSelected === currentQ?.correct_answer
+              <div className={`mt-6 rounded-xl p-5 border text-sm leading-relaxed transition-all duration-300 space-y-3 ${
+                currentEval?.is_correct
                   ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/50 dark:bg-emerald-950/30 text-emerald-950 dark:text-emerald-200'
                   : 'border-rose-200 bg-rose-50/70 dark:border-rose-900/50 dark:bg-rose-950/30 text-rose-950 dark:text-rose-200'
               }`}>
-                <div className="flex items-center gap-2 font-bold mb-1.5">
-                  {currentSelected === currentQ?.correct_answer ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                      <span>Correct Answer!</span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-4 w-4 text-rose-600" />
-                      <span>Incorrect — Correct Answer: {currentQ?.correct_answer}</span>
-                    </>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold">
+                    {currentEval?.is_correct ? (
+                      <>
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                        <span>Correct Answer!</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-5 w-5 text-rose-600" />
+                        <span>Incorrect — Expected: {currentEval?.correct_answer || currentQ?.correct_answer}</span>
+                      </>
+                    )}
+                  </div>
+                  {currentEval?.score !== undefined && (
+                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-white/70 dark:bg-black/30 border border-current">
+                      Score: {Math.round((currentEval?.score || 0) * 100)}%
+                    </span>
                   )}
                 </div>
-                <p className="text-xs leading-relaxed text-slate-700 dark:text-slate-300 mt-1">
-                  <strong>Explanation:</strong> {currentQ?.explanation || 'Directly grounded in source concepts.'}
-                </p>
+
+                {currentEval?.feedback && (
+                  <div className="text-xs bg-white/60 dark:bg-black/20 p-2.5 rounded-lg border border-current/10">
+                    <span className="font-semibold">Evaluation Feedback: </span>
+                    <span>{currentEval.feedback}</span>
+                  </div>
+                )}
+
+                {currentEval?.key_points_covered && currentEval.key_points_covered.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="font-semibold text-emerald-800 dark:text-emerald-300">Concepts Covered:</span>
+                    {currentEval.key_points_covered.map((kp, idx) => (
+                      <span key={idx} className="rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 font-mono text-[10px]">
+                        ✓ {kp}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {currentEval?.key_points_missed && currentEval.key_points_missed.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="font-semibold text-amber-800 dark:text-amber-300">Missed Points:</span>
+                    {currentEval.key_points_missed.map((kp, idx) => (
+                      <span key={idx} className="rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 px-2 py-0.5 font-mono text-[10px]">
+                        ✗ {kp}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="text-xs leading-relaxed text-slate-700 dark:text-slate-300 pt-1 border-t border-current/10">
+                  <strong className="text-slate-900 dark:text-white">Explanation: </strong>
+                  {currentEval?.explanation || currentQ?.explanation || 'Directly grounded in source concepts.'}
+                  {currentEval?.source_page && (
+                    <span className="ml-2 font-mono font-bold text-primary-600 dark:text-primary-400">
+                      [Source: Page {currentEval.source_page}]
+                    </span>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -301,17 +485,20 @@ export const Quiz = () => {
           <div className="grid grid-cols-5 gap-2">
             {questions.map((q, idx) => {
               const isCurrent = idx === currentIndex;
-              const ans = answers[q.id];
+              const ev = evaluations[q.id];
+              const isAnswered = !!locked[q.id];
               const isMarked = markedForReview.has(q.id);
 
               let style = 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
               if (isMarked) {
                 style = 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300';
-              } else if (ans) {
-                if (ans === q.correct_answer) {
+              } else if (isAnswered) {
+                if (ev?.is_correct) {
                   style = 'bg-emerald-600 text-white font-bold';
-                } else {
+                } else if (ev?.is_correct === false) {
                   style = 'bg-rose-600 text-white font-bold';
+                } else {
+                  style = 'bg-primary-600 text-white font-bold';
                 }
               }
 
@@ -323,6 +510,7 @@ export const Quiz = () => {
                 <button
                   key={idx}
                   onClick={() => setCurrentIndex(idx)}
+                  title={`Question ${idx + 1}: ${q.topic || 'General'}`}
                   className={`h-9 rounded-lg text-xs font-bold transition-all ${style}`}
                 >
                   {idx + 1}

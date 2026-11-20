@@ -20,7 +20,9 @@ DISALLOWED_SUBJECT_PREFIXES = (
 FORBIDDEN_CONTENT_WORDS = (
     "silberschatz", "korth", "sudarshan", "edition", "copyright", "db-book",
     "chapter 4 : intermediate sql", "chapter 4: intermediate sql", "all rights reserved",
-    "end of chapter", "table of contents", "slide", "page 4."
+    "end of chapter", "table of contents", "slide", "page 4.", "foundational principles",
+    "core concepts and foundational", "agenda", "outline", "chapter outline", "overview slides",
+    "course syllabus", "lecture outline"
 )
 
 
@@ -45,6 +47,7 @@ class QuestionGenerator:
         difficulty: str = "medium",
         count: int = 5,
         topic: Optional[str] = None,
+        doc_filename: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         if not chunks:
             return []
@@ -73,21 +76,38 @@ class QuestionGenerator:
         if self.llm.is_external:
             try:
                 llm_questions = self._generate_with_llm(
-                    informative_chunks, q_type=q_type, difficulty=difficulty, count=count, topic=topic
+                    informative_chunks,
+                    q_type=q_type,
+                    difficulty=difficulty,
+                    count=count,
+                    topic=topic,
+                    doc_filename=doc_filename,
                 )
                 if llm_questions and len(llm_questions) >= count:
                     return llm_questions[:count]
                 elif llm_questions:
                     # Supplement with local generation if count not fully met
                     local_supplement = self._generate_local(
-                        informative_chunks, q_type=q_type, difficulty=difficulty, count=count - len(llm_questions), topic=topic
+                        informative_chunks,
+                        q_type=q_type,
+                        difficulty=difficulty,
+                        count=count - len(llm_questions),
+                        topic=topic,
+                        doc_filename=doc_filename,
                     )
                     return (llm_questions + local_supplement)[:count]
             except Exception as e:
                 logger.warning(f"LLM question generation failed: {e}. Falling back to local generation.")
 
         # Priority 2: Deterministic local generation
-        return self._generate_local(informative_chunks, q_type=q_type, difficulty=difficulty, count=count, topic=topic)
+        return self._generate_local(
+            informative_chunks,
+            q_type=q_type,
+            difficulty=difficulty,
+            count=count,
+            topic=topic,
+            doc_filename=doc_filename,
+        )
 
     def _generate_with_llm(
         self,
@@ -96,6 +116,7 @@ class QuestionGenerator:
         difficulty: str,
         count: int,
         topic: Optional[str],
+        doc_filename: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Generates grounded questions using Gemini with strict JSON validation."""
         selected_chunks = chunks[:min(len(chunks), 8)]
@@ -109,6 +130,35 @@ class QuestionGenerator:
 
         context_str = "\n\n".join(context_blocks)
 
+        type_instructions = ""
+        if q_type in ("true_false", "boolean"):
+            type_instructions = (
+                "- Question Type: True/False statement.\n"
+                "- Question stem must start with 'True or False: ' (e.g. 'True or False: RIP uses distance vector routing.').\n"
+                "- 'options' must be EXACTLY: [\"True\", \"False\"].\n"
+                "- 'correct_answer' must be either 'True' or 'False'.\n"
+            )
+        elif q_type in ("fill_blank", "fill_in_blank"):
+            type_instructions = (
+                "- Question Type: Fill in the blank.\n"
+                "- Question stem must be a complete informative sentence with exactly one technical term replaced by '___'.\n"
+                "- 'options' must be [] (empty array).\n"
+                "- 'correct_answer' must be the exact missing technical term.\n"
+            )
+        elif q_type in ("short_answer", "long_answer", "conceptual", "application"):
+            type_instructions = (
+                "- Question Type: Short Answer / Open-ended conceptual question.\n"
+                "- Question stem must prompt for an explanation, comparison, or definition.\n"
+                "- 'options' must be [] (empty array).\n"
+                "- 'correct_answer' must be a complete model reference answer of 2-3 sentences.\n"
+            )
+        else:
+            type_instructions = (
+                "- Question Type: Multiple Choice (MCQ).\n"
+                "- 'options' must contain EXACTLY 4 plausible, complete options from the same domain.\n"
+                "- 'correct_answer' must be one of the 4 options.\n"
+            )
+
         prompt = f"""You are an expert university professor creating an exam on the provided document excerpts.
 Topic: {topic or 'Core Concepts'}
 Difficulty: {difficulty}
@@ -120,15 +170,11 @@ SOURCE CONTEXT:
 
 STRICT REQUIREMENTS:
 1. Every question must test real concepts from the content (e.g. SQL join types, views, integrity constraints, transport layer mechanisms, port numbers, routing algorithms).
-2. NEVER create questions about book authors (Silberschatz, Korth, Sudarshan), textbook edition, copyright, page numbers, or slide headers/footers.
-3. Every question stem must be a complete, clear question without pronoun subjects (avoid starting with 'It', 'They', 'This', 'We').
-4. For Multiple Choice (mcq):
-   - Exactly 4 plausible, complete options of the same grammatical kind.
-   - NO single-word fragments like 'See', 'Let R', 'Views', 'Edition'.
-   - Exactly 1 correct answer that is directly supported by the context.
-   - A clear explanation (1-2 sentences explaining WHY the answer is correct, not just quoting a page).
-5. For fill_blank: blank a key technical term in a complete, meaningful sentence.
-6. Provide the exact page number ('page') from the source where the answer is found.
+2. NEVER create questions about book authors (Silberschatz, Korth, Sudarshan), textbook edition, copyright, page numbers, file names, or slide headers/footers.
+3. Every question stem must be a complete, clear, grammatical question (at least 6 words). Avoid starting with pronoun subjects ('It', 'They', 'This', 'We').
+4. Never mention the file name (e.g. '{doc_filename or ""}') or use phrases like 'In Introduction, complete the following'.
+{type_instructions}
+5. Provide a clear 1-2 sentence explanation of WHY the answer is correct and cite the source page.
 
 OUTPUT FORMAT:
 Return a JSON array of objects with this schema:
@@ -137,7 +183,7 @@ Return a JSON array of objects with this schema:
     "question": "Clear, complete question stem?",
     "options": ["Option A", "Option B", "Option C", "Option D"],
     "correct_answer": "Option A",
-    "explanation": "Clear 1-2 sentence explanation.",
+    "explanation": "Clear 1-2 sentence explanation. (Documented on Page X)",
     "type": "{q_type}",
     "difficulty": "{difficulty}",
     "page": 3,
@@ -154,58 +200,106 @@ Return a JSON array of objects with this schema:
             return []
 
         valid_questions = []
-        seen_stems = set()
-
         for item in result:
             if not isinstance(item, dict):
                 continue
-            stem = item.get("question", "").strip()
-            correct = item.get("correct_answer", "").strip()
-            options = item.get("options", [])
-            explanation = item.get("explanation", "").strip()
-            page = item.get("page", 1)
+            item["type"] = q_type
+            item["difficulty"] = difficulty
+            item["topic"] = item.get("topic") or topic or "Core Concepts"
+            item["provider_notice"] = self.llm.get_provider_notice()
+            item["quality_score"] = 0.98
 
-            if not stem or not correct or len(stem) < 15:
-                continue
+            if q_type in ("true_false", "boolean"):
+                item["options"] = ["True", "False"]
+                stem_raw = item.get("question", "").strip()
+                if not stem_raw.lower().startswith("true or false:"):
+                    item["question"] = f"True or False: {stem_raw}"
 
-            stem_lower = stem.lower()
-            if any(fw in stem_lower for fw in FORBIDDEN_CONTENT_WORDS):
-                continue
-            if any(stem_lower.startswith(pfx) for pfx in DISALLOWED_SUBJECT_PREFIXES):
-                continue
-
-            stem_norm = re.sub(r"\W+", " ", stem_lower).strip()
-            if stem_norm in seen_stems:
-                continue
-            seen_stems.add(stem_norm)
-
-            if q_type == "mcq":
-                if not options or len(options) != 4:
-                    continue
-                # Options must not be empty or tiny fragments
-                if any(len(str(opt).strip().split()) < 2 and not str(opt).strip().isdigit() for opt in options):
-                    continue
-                if correct not in options:
-                    options[0] = correct
-                random.shuffle(options)
-
-            if explanation and f"Page {page}" not in explanation and "document" not in explanation.lower():
-                explanation = f"{explanation} (Documented on Page {page})."
-
-            valid_questions.append({
-                "type": q_type,
-                "difficulty": difficulty,
-                "question": stem,
-                "options": options,
-                "correct_answer": correct,
-                "explanation": explanation or f"Verified in source document on Page {page}.",
-                "page": page,
-                "topic": item.get("topic") or topic or "Core Concepts",
-                "provider_notice": self.llm.get_provider_notice(),
-                "quality_score": 0.98,
-            })
+            if self._is_valid_question(item, doc_filename=doc_filename):
+                page = item.get("page", 1)
+                exp = item.get("explanation", "").strip()
+                if exp and f"Page {page}" not in exp and "document" not in exp.lower():
+                    item["explanation"] = f"{exp} (Documented on Page {page})."
+                valid_questions.append(item)
 
         return valid_questions
+
+    def _is_valid_question(self, q: Dict[str, Any], doc_filename: Optional[str] = None) -> bool:
+        """
+        Enforces strict quality rules:
+        - Rejects stems containing file name or extension
+        - Rejects stems with fewer than 6 words
+        - Rejects 'complete the following' with title or fragment
+        - Rejects multi-word answers appearing verbatim in stem
+        - Rejects discourse words and copyright filler
+        - Ensures options match question type
+        """
+        stem = q.get("question", "").strip()
+        correct = str(q.get("correct_answer", "")).strip()
+        q_type = (q.get("type") or "mcq").lower()
+
+        if not stem or not correct:
+            return False
+
+        words = stem.split()
+        if len(words) < 6:
+            return False
+
+        stem_lower = stem.lower()
+
+        # Reject file names and extensions
+        if re.search(r"\.(pdf|pptx|docx|txt|html|csv)\b", stem_lower):
+            return False
+        if doc_filename:
+            base_fn = re.sub(r"\.[a-zA-Z0-9]+$", "", doc_filename.lower()).strip()
+            if base_fn and base_fn in stem_lower:
+                return False
+
+        # Reject "complete the following" with title/heading or generic filler
+        if "complete the following" in stem_lower:
+            if any(p in stem_lower for p in ("in chapter", "in introduction", "in overview", "in topics", "in the text", "foundational")):
+                return False
+
+        # Reject generic filler
+        if any(fw in stem_lower for fw in FORBIDDEN_CONTENT_WORDS):
+            return False
+        if any(stem_lower.startswith(pfx) for pfx in DISALLOWED_SUBJECT_PREFIXES):
+            return False
+
+        # Reject multi-word answers appearing verbatim in stem (giving away answer)
+        correct_lower = correct.lower()
+        if "\n" in correct:
+            return False
+        if correct_lower.startswith(("or ", "and ", "there ", "this ", "that ", "it ", "they ", "we ")):
+            return False
+        if len(correct_lower.split()) >= 2 and correct_lower in stem_lower:
+            return False
+
+        # Question type specific invariants
+        options = q.get("options") or []
+        if q_type == "mcq":
+            if len(options) != 4:
+                return False
+            if len(set(options)) != 4:
+                return False
+            # Options must not contain forbidden words
+            for opt in options:
+                opt_str = str(opt).strip().lower()
+                if any(fw in opt_str for fw in FORBIDDEN_CONTENT_WORDS):
+                    return False
+        elif q_type in ("true_false", "boolean"):
+            if options and set(options) != {"True", "False"}:
+                return False
+            if correct not in ("True", "False"):
+                return False
+        elif q_type in ("fill_blank", "fill_in_blank"):
+            if "___" not in stem and "____" not in stem:
+                return False
+        elif q_type in ("short_answer", "long_answer", "conceptual", "application"):
+            if len(correct.split()) < 4:
+                return False
+
+        return True
 
     def _generate_local(
         self,
@@ -214,8 +308,9 @@ Return a JSON array of objects with this schema:
         difficulty: str,
         count: int,
         topic: Optional[str],
+        doc_filename: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """Deterministic local question generation with in-document distractors."""
+        """Deterministic local question generation with domain-isolated distractors."""
         chunk_sentences = []
         doc_terms: Set[str] = set()
         doc_numbers: Set[str] = set()
@@ -235,7 +330,7 @@ Return a JSON array of objects with this schema:
                 s_lower = s_clean.lower()
                 word_count = len(s_clean.split())
 
-                if word_count < 5 or word_count > 60:
+                if word_count < 6 or word_count > 60:
                     continue
                 if any(fw in s_lower for fw in FORBIDDEN_CONTENT_WORDS):
                     continue
@@ -255,7 +350,17 @@ Return a JSON array of objects with this schema:
         if not chunk_sentences:
             return []
 
-        # Extract genuine definitions and keywords
+        # Detect domain
+        all_text_lower = all_text.lower()
+        if any(k in all_text_lower for k in ("sql", "select ", "from ", "join", "relation", "database")):
+            domain = "sql"
+        elif any(k in all_text_lower for k in ("rip", "ospf", "hop count", "routing", "autonomous system")):
+            domain = "routing"
+        elif any(k in all_text_lower for k in ("transport", "udp", "tcp", "socket", "port number")):
+            domain = "transport"
+        else:
+            domain = "general"
+
         definitions = extract_definitions(all_text)
         for d in definitions:
             term = d["term"].strip()
@@ -270,50 +375,339 @@ Return a JSON array of objects with this schema:
         facts = self._extract_domain_facts(chunk_sentences, definitions, all_text)
         generated = []
         used_distractors_global: Set[str] = set()
-        seen_questions: Set[str] = set()
+        seen_stems: Set[str] = set()
 
+        # Build candidate questions matching q_type
         for fact in facts:
             if len(generated) >= count:
                 break
 
-            q_data = self._build_mcq(fact, doc_terms, doc_numbers, used_distractors_global, difficulty)
-            if q_data and q_data["question"] not in seen_questions:
-                seen_questions.add(q_data["question"])
-                q_data["topic"] = topic or fact.get("section") or "Core Concepts"
-                q_data["provider_notice"] = self.llm.get_provider_notice()
-                generated.append(q_data)
+            q_obj = None
+            if q_type == "mcq":
+                q_obj = self._build_mcq(fact, doc_terms, doc_numbers, used_distractors_global, difficulty, domain)
+            elif q_type in ("true_false", "boolean"):
+                is_true = (len(generated) % 2 == 0)
+                q_obj = self._build_true_false(fact, doc_terms, difficulty, is_true=is_true)
+            elif q_type in ("fill_blank", "fill_in_blank"):
+                q_obj = self._build_fill_blank(fact, doc_terms, difficulty)
+            elif q_type in ("short_answer", "long_answer", "conceptual", "application"):
+                q_obj = self._build_short_answer(fact, difficulty)
 
-        # Fallback if specific pattern facts are fewer than count
+            if q_obj and self._is_valid_question(q_obj, doc_filename=doc_filename):
+                stem_key = re.sub(r"\W+", " ", q_obj["question"].lower()).strip()
+                if stem_key not in seen_stems:
+                    seen_stems.add(stem_key)
+                    q_obj["topic"] = topic or fact.get("section") or "Core Concepts"
+                    q_obj["provider_notice"] = self.llm.get_provider_notice()
+                    generated.append(q_obj)
+
+        # Fallback using high-quality chunk sentences if facts were fewer than count
         if len(generated) < count and chunk_sentences:
             for item in chunk_sentences:
                 if len(generated) >= count:
                     break
                 s = item["sentence"]
-                words = s.split()
-                if len(words) < 6:
+                s_words = s.split()
+                if len(s_words) < 8:
                     continue
-                # Use a 2-word phrase to satisfy length invariant
-                target_word = f"{words[0]} {words[1]}"
-                q_stem = f"In {item['section'] or 'the text'}, complete the following: \"___ {' '.join(words[2:12])}...\""
-                if q_stem in seen_questions:
-                    continue
-                seen_questions.add(q_stem)
-                opts = [target_word] + self._select_document_distractors(target_word, doc_terms, doc_numbers, used_distractors_global, count=3)
-                random.shuffle(opts)
-                generated.append({
-                    "type": q_type,
-                    "difficulty": difficulty,
-                    "question": q_stem,
-                    "options": opts,
-                    "correct_answer": target_word,
-                    "explanation": f"Full context from Page {item['page']}: {s}",
-                    "page": item["page"],
-                    "topic": item["section"] or "Core Concepts",
-                    "provider_notice": self.llm.get_provider_notice(),
-                    "quality_score": 0.88,
-                })
+
+                # Match a key term from the sentence
+                matched_term = None
+                for t in doc_terms:
+                    if len(t.split()) >= 1 and t.lower() in s.lower() and len(t) >= 4:
+                        matched_term = t
+                        break
+
+                q_obj = None
+                if q_type == "mcq" and matched_term:
+                    stem = f"In this document, which concept is described as follows: \"{s[:120]}...\"?"
+                    distractors = self._select_document_distractors(matched_term, doc_terms, doc_numbers, used_distractors_global, count=3, domain=domain)
+                    opts = [matched_term] + distractors
+                    random.shuffle(opts)
+                    q_obj = {
+                        "type": "mcq",
+                        "difficulty": difficulty,
+                        "question": stem,
+                        "options": opts,
+                        "correct_answer": matched_term,
+                        "explanation": f"Grounded in source passage on Page {item['page']}: {s}",
+                        "page": item["page"],
+                        "quality_score": 0.92,
+                    }
+                elif q_type in ("true_false", "boolean"):
+                    is_true = (len(generated) % 2 == 0)
+                    stem = f"True or False: {s}"
+                    q_obj = {
+                        "type": "true_false",
+                        "difficulty": difficulty,
+                        "question": stem,
+                        "options": ["True", "False"],
+                        "correct_answer": "True",
+                        "explanation": f"Directly confirmed in source text on Page {item['page']}.",
+                        "page": item["page"],
+                        "quality_score": 0.92,
+                    }
+                elif q_type in ("fill_blank", "fill_in_blank") and matched_term:
+                    blanked_sentence = re.sub(re.escape(matched_term), "___", s, count=1, flags=re.IGNORECASE)
+                    if "___" in blanked_sentence:
+                        stem = f"Fill in the blank: {blanked_sentence}"
+                        q_obj = {
+                            "type": "fill_blank",
+                            "difficulty": difficulty,
+                            "question": stem,
+                            "options": [],
+                            "correct_answer": matched_term,
+                            "explanation": f"Full context from Page {item['page']}: {s}",
+                            "page": item["page"],
+                            "quality_score": 0.92,
+                        }
+                elif q_type in ("short_answer", "long_answer", "conceptual", "application") and matched_term:
+                    stem = f"Explain the principle and operational role of {matched_term}."
+                    q_obj = {
+                        "type": "short_answer",
+                        "difficulty": difficulty,
+                        "question": stem,
+                        "options": [],
+                        "correct_answer": s,
+                        "explanation": f"Model answer derived from Page {item['page']}: {s}",
+                        "page": item["page"],
+                        "quality_score": 0.92,
+                    }
+
+                if q_obj and self._is_valid_question(q_obj, doc_filename=doc_filename):
+                    stem_key = re.sub(r"\W+", " ", q_obj["question"].lower()).strip()
+                    if stem_key not in seen_stems:
+                        seen_stems.add(stem_key)
+                        q_obj["topic"] = topic or item.get("section") or "Core Concepts"
+                        q_obj["provider_notice"] = self.llm.get_provider_notice()
+                        generated.append(q_obj)
 
         return generated[:count]
+
+    def _build_mcq(
+        self,
+        fact: Dict[str, Any],
+        doc_terms: Set[str],
+        doc_numbers: Set[str],
+        used_distractors_global: Set[str],
+        difficulty: str,
+        domain: str = "general",
+    ) -> Optional[Dict[str, Any]]:
+        correct_answer = fact["answer"].strip()
+        page = fact.get("page", 1)
+        chunk_id = fact.get("chunk_id")
+        question = fact.get("question")
+
+        if not question:
+            term = fact.get("term", "this concept")
+            definition = fact.get("definition", "")
+            question = f"According to the text, which concept is defined as: \"{definition[:130]}\"?"
+
+        distractors = self._select_document_distractors(
+            correct=correct_answer,
+            doc_terms=doc_terms,
+            doc_numbers=doc_numbers,
+            used_global=used_distractors_global,
+            count=3,
+            domain=domain,
+        )
+
+        options = [correct_answer] + distractors
+        random.shuffle(options)
+
+        return {
+            "type": "mcq",
+            "difficulty": difficulty,
+            "question": question,
+            "options": options,
+            "correct_answer": correct_answer,
+            "explanation": fact.get("explanation") or f"Documented on Page {page}.",
+            "page": page,
+            "source_chunk_id": chunk_id,
+            "quality_score": 0.95,
+        }
+
+    def _build_true_false(
+        self,
+        fact: Dict[str, Any],
+        doc_terms: Set[str],
+        difficulty: str,
+        is_true: bool = True,
+    ) -> Optional[Dict[str, Any]]:
+        page = fact.get("page", 1)
+        chunk_id = fact.get("chunk_id")
+        term = fact.get("term") or fact.get("answer", "")
+        definition = fact.get("definition") or fact.get("explanation", "")
+
+        if is_true:
+            if fact.get("kind") == "metric_limit" or term.isdigit():
+                q_text = fact.get("question", "").replace("What is ", "").rstrip("?")
+                stem = f"True or False: {q_text} is {term}."
+            else:
+                stem = f"True or False: {term} is defined as {definition}."
+            correct = "True"
+            explanation = f"Confirmed directly by document definition on Page {page}."
+        else:
+            if fact.get("kind") == "metric_limit" or term.isdigit():
+                sn = "32" if term != "32" else "16"
+                q_text = fact.get("question", "").replace("What is ", "").rstrip("?")
+                stem = f"True or False: {q_text} is {sn}."
+                correct = "False"
+                explanation = f"False. The correct limit is {term}, not {sn} (Page {page})."
+            else:
+                other_terms = [t for t in doc_terms if t.lower() != term.lower() and not t.isdigit() and len(t) >= 4]
+                alt_term = other_terms[0] if other_terms else "A standard sequential scan"
+                stem = f"True or False: {alt_term} operates primarily to {definition}."
+                correct = "False"
+                explanation = f"False. The mechanism described belongs to {term}, not {alt_term} (Page {page})."
+
+        return {
+            "type": "true_false",
+            "difficulty": difficulty,
+            "question": stem,
+            "options": ["True", "False"],
+            "correct_answer": correct,
+            "explanation": explanation,
+            "page": page,
+            "source_chunk_id": chunk_id,
+            "quality_score": 0.95,
+        }
+
+    def _build_fill_blank(
+        self,
+        fact: Dict[str, Any],
+        doc_terms: Set[str],
+        difficulty: str,
+    ) -> Optional[Dict[str, Any]]:
+        page = fact.get("page", 1)
+        chunk_id = fact.get("chunk_id")
+        term = fact.get("term") or fact.get("answer", "")
+        definition = fact.get("definition") or ""
+
+        if not definition:
+            return None
+
+        stem = f"Fill in the blank: ___ is defined as {definition}."
+        return {
+            "type": "fill_blank",
+            "difficulty": difficulty,
+            "question": stem,
+            "options": [],
+            "correct_answer": term,
+            "explanation": f"According to the source document on Page {page}, {term} is defined as: {definition}.",
+            "page": page,
+            "source_chunk_id": chunk_id,
+            "quality_score": 0.95,
+        }
+
+    def _build_short_answer(
+        self,
+        fact: Dict[str, Any],
+        difficulty: str,
+    ) -> Optional[Dict[str, Any]]:
+        page = fact.get("page", 1)
+        chunk_id = fact.get("chunk_id")
+        term = fact.get("term") or fact.get("answer", "")
+        definition = fact.get("definition") or fact.get("explanation", "")
+
+        stem = f"Explain the core function and definition of {term}."
+        model_answer = f"{term} is defined as {definition}."
+
+        return {
+            "type": "short_answer",
+            "difficulty": difficulty,
+            "question": stem,
+            "options": [],
+            "correct_answer": model_answer,
+            "explanation": f"Reference model answer documented on Page {page}: {model_answer}",
+            "page": page,
+            "source_chunk_id": chunk_id,
+            "quality_score": 0.95,
+        }
+
+    def _select_document_distractors(
+        self,
+        correct: str,
+        doc_terms: Set[str],
+        doc_numbers: Set[str],
+        used_global: Set[str],
+        count: int = 3,
+        domain: str = "general",
+    ) -> List[str]:
+        correct_lower = correct.lower()
+        is_numeric = bool(re.match(r"^\d+$", correct.strip()))
+
+        if is_numeric:
+            numeric_pool = [n for n in doc_numbers if n != correct.strip() and n.lower() not in used_global]
+            standard_nums = ["16", "15", "8", "30", "4", "2", "14", "32", "255", "1023", "49151", "65535"]
+            for sn in standard_nums:
+                if len(numeric_pool) >= (count * 2):
+                    break
+                if sn != correct.strip() and sn.lower() not in used_global and sn not in numeric_pool:
+                    numeric_pool.append(sn)
+            try:
+                corr_val = int(correct.strip())
+                numeric_pool.sort(key=lambda x: abs(int(x) - corr_val))
+            except Exception:
+                pass
+            chosen = []
+            for n in numeric_pool:
+                if len(chosen) >= count:
+                    break
+                chosen.append(n)
+                used_global.add(n.lower())
+            return chosen
+
+        # Filter candidate terms from the same document
+        candidates = []
+        for t in doc_terms:
+            t_strip = t.strip()
+            t_low = t_strip.lower()
+            if t_low == correct_lower or t_low in used_global:
+                continue
+            if any(fw in t_low for fw in FORBIDDEN_CONTENT_WORDS):
+                continue
+            if len(t_strip.split()) < 2 and not t_strip.isdigit():
+                continue
+            candidates.append(t_strip)
+
+        if len(candidates) < count:
+            # Domain-isolated fallbacks
+            DOMAIN_FALLBACKS = {
+                "sql": [
+                    "Full outer join", "Natural join", "Inner join condition",
+                    "create view", "create table", "grant authorization",
+                    "select clause", "group by clause", "having condition"
+                ],
+                "routing": [
+                    "Distance vector routing", "Link state routing", "Path vector routing",
+                    "Hop count metric", "Transient link", "Stub link network",
+                    "Autonomous System boundary", "Open Shortest Path First", "Routing Information Protocol"
+                ],
+                "transport": [
+                    "Connection-oriented TCP delivery", "Connectionless UDP service",
+                    "Socket address pair", "Well-known port range", "Sliding window protocol",
+                    "Congestion control mechanism", "Process-to-process delivery"
+                ],
+                "general": [
+                    "Algorithmic execution", "Hierarchical data structure",
+                    "Relational schema model", "Linear array structure"
+                ]
+            }
+            fallbacks = DOMAIN_FALLBACKS.get(domain, DOMAIN_FALLBACKS["general"])
+            for df in fallbacks:
+                if df.lower() != correct_lower and df.lower() not in used_global and df not in candidates:
+                    candidates.append(df)
+
+        random.shuffle(candidates)
+        chosen = []
+        for c in candidates:
+            if len(chosen) >= count:
+                break
+            chosen.append(c)
+            used_global.add(c.lower())
+
+        return chosen
 
     def _extract_domain_facts(self, chunk_sentences: List[Dict[str, Any]], definitions: List[Dict[str, Any]], all_text: str) -> List[Dict[str, Any]]:
         """Extracts structured factual statements across Database SQL, Networking, and OS domains."""
@@ -453,110 +847,3 @@ Return a JSON array of objects with this schema:
 
         return facts
 
-    def _build_mcq(
-        self,
-        fact: Dict[str, Any],
-        doc_terms: Set[str],
-        doc_numbers: Set[str],
-        used_distractors_global: Set[str],
-        difficulty: str,
-    ) -> Optional[Dict[str, Any]]:
-        correct_answer = fact["answer"].strip()
-        page = fact.get("page", 1)
-        chunk_id = fact.get("chunk_id")
-        question = fact.get("question")
-
-        if not question:
-            term = fact.get("term", "this concept")
-            definition = fact.get("definition", "")
-            question = f"According to the text, which concept is defined as: \"{definition[:130]}\"?"
-
-        distractors = self._select_document_distractors(
-            correct=correct_answer,
-            doc_terms=doc_terms,
-            doc_numbers=doc_numbers,
-            used_global=used_distractors_global,
-            count=3,
-        )
-
-        options = [correct_answer] + distractors
-        random.shuffle(options)
-
-        return {
-            "type": "mcq",
-            "difficulty": difficulty,
-            "question": question,
-            "options": options,
-            "correct_answer": correct_answer,
-            "explanation": fact.get("explanation") or f"Documented on Page {page}.",
-            "page": page,
-            "source_chunk_id": chunk_id,
-            "quality_score": 0.95,
-        }
-
-    def _select_document_distractors(
-        self,
-        correct: str,
-        doc_terms: Set[str],
-        doc_numbers: Set[str],
-        used_global: Set[str],
-        count: int = 3,
-    ) -> List[str]:
-        correct_lower = correct.lower()
-        is_numeric = bool(re.match(r"^\d+$", correct.strip()))
-
-        if is_numeric:
-            numeric_pool = [n for n in doc_numbers if n != correct.strip() and n.lower() not in used_global]
-            standard_nums = ["16", "15", "8", "30", "4", "2", "14", "32", "255", "1023", "49151", "65535"]
-            for sn in standard_nums:
-                if len(numeric_pool) >= (count * 2):
-                    break
-                if sn != correct.strip() and sn.lower() not in used_global and sn not in numeric_pool:
-                    numeric_pool.append(sn)
-            try:
-                corr_val = int(correct.strip())
-                numeric_pool.sort(key=lambda x: abs(int(x) - corr_val))
-            except Exception:
-                pass
-            chosen = []
-            for n in numeric_pool:
-                if len(chosen) >= count:
-                    break
-                chosen.append(n)
-                used_global.add(n.lower())
-            return chosen
-
-        # Filter candidate terms: must be at least 2 words (or complete technical terms), no forbidden copyright words
-        candidates = []
-        for t in doc_terms:
-            t_strip = t.strip()
-            t_low = t_strip.lower()
-            if t_low == correct_lower or t_low in used_global:
-                continue
-            if any(fw in t_low for fw in FORBIDDEN_CONTENT_WORDS):
-                continue
-            if len(t_strip.split()) < 2 and not t_strip.isdigit():
-                continue
-            candidates.append(t_strip)
-
-        if len(candidates) < count:
-            # Domain fallbacks of complete options
-            domain_fallbacks = [
-                "Full outer join", "Natural join", "Cartesian cross product",
-                "create table", "create index", "create trigger",
-                "Connection-oriented TCP delivery", "Connectionless UDP service",
-                "Distance vector routing", "Link state routing", "Path vector routing"
-            ]
-            for df in domain_fallbacks:
-                if df.lower() != correct_lower and df.lower() not in used_global and df not in candidates:
-                    candidates.append(df)
-
-        random.shuffle(candidates)
-        chosen = []
-        for c in candidates:
-            if len(chosen) >= count:
-                break
-            chosen.append(c)
-            used_global.add(c.lower())
-
-        return chosen

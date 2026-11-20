@@ -24,9 +24,12 @@ from backend.app.schemas.quiz import (
     QuizOut,
     QuizQuestionOut,
     QuizAttemptStartResponse,
+    SingleQuizResponseInput,
+    SingleQuizResponseOut,
     QuizSubmitRequest,
     QuizResultResponse,
     QuizQuestionResult,
+    TopicPerformanceItem,
     RecommendationItem,
 )
 
@@ -61,18 +64,10 @@ def generate_questions(
     ).scalars().all()
 
     if not chunks:
-        chunks = [
-            DocumentChunk(
-                id=uuid.uuid4(),
-                document_id=doc.id,
-                chunk_index=0,
-                text=f"Core concepts and foundational principles for {doc.original_filename}.",
-                token_count=10,
-                page_start=1,
-                page_end=1,
-                section_title="Introduction",
-            )
-        ]
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No readable text chunks found in document. Please extract and process the document first.",
+        )
 
     # 3. Generate questions using NLP QGen
     qgen = QuestionGenerator(db)
@@ -82,6 +77,7 @@ def generate_questions(
         difficulty=req.difficulty,
         count=req.count,
         topic=req.topic,
+        doc_filename=doc.original_filename,
     )
 
     # 4. Save to PostgreSQL GeneratedQuestion table
@@ -251,8 +247,8 @@ def get_quiz(
             options=gq.options or [],
             type=gq.type,
             difficulty=gq.difficulty,
-            correct_answer=gq.correct_answer,
-            explanation=gq.explanation,
+            correct_answer=None,
+            explanation=None,
         )
         for qq, gq in qqs
     ]
@@ -286,6 +282,26 @@ def start_quiz_attempt(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
+@router.post("/attempts/{id}/responses", response_model=SingleQuizResponseOut)
+def record_single_quiz_response(
+    id: uuid.UUID,
+    req: SingleQuizResponseInput,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Submits a single answer in the one-by-one interactive quiz.
+    Evaluates the response server-side, saves it to quiz_responses, and returns immediate feedback.
+    """
+    user_id = uuid.UUID(str(current_user["id"]))
+    service = QuizService(db)
+    try:
+        eval_feedback = service.record_single_response(user_id=user_id, attempt_id=id, req=req)
+        return SingleQuizResponseOut(**eval_feedback)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
 @router.post("/attempts/{id}/submit", response_model=QuizResultResponse)
 def submit_quiz_attempt(
     id: uuid.UUID,
@@ -312,6 +328,7 @@ def submit_quiz_attempt(
             total=result["total"],
             accuracy=result["accuracy"],
             time_taken_seconds=result["time_taken_seconds"],
+            topic_performance=[TopicPerformanceItem(**t) for t in result.get("topic_performance", [])],
             responses=[QuizQuestionResult(**q) for q in result["questions"]],
             recommendations=[RecommendationItem(**w) for w in result["weak_topics"]],
         )
@@ -320,6 +337,7 @@ def submit_quiz_attempt(
 
 
 @router.get("/attempts/{id}", response_model=QuizResultResponse)
+@router.get("/attempts/{id}/results", response_model=QuizResultResponse)
 def get_attempt_review(
     id: uuid.UUID,
     db: Session = Depends(get_db),
@@ -336,6 +354,7 @@ def get_attempt_review(
             total=result["total"],
             accuracy=result["accuracy"],
             time_taken_seconds=result["time_taken_seconds"],
+            topic_performance=[TopicPerformanceItem(**t) for t in result.get("topic_performance", [])],
             responses=[QuizQuestionResult(**q) for q in result["questions"]],
             recommendations=[RecommendationItem(**w) for w in result["weak_topics"]],
         )

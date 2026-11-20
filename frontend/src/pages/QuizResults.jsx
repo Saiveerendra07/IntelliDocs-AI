@@ -80,7 +80,7 @@ export const QuizResults = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link
             to={`/quizzes/${results?.quiz_id}`}
             className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-surface-darkBorder px-4 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50"
@@ -88,6 +88,17 @@ export const QuizResults = () => {
             <RotateCcw className="h-4 w-4" />
             Retake Quiz
           </Link>
+
+          {results?.recommendations && results.recommendations.length > 0 && (
+            <Link
+              to={`/questions?topic=${encodeURIComponent(results.recommendations[0].topic)}`}
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-amber-700 transition-colors"
+            >
+              <Sparkles className="h-4 w-4" />
+              Practice Weak Topics
+            </Link>
+          )}
+
           <Link
             to="/"
             className="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-primary-700"
@@ -117,6 +128,48 @@ export const QuizResults = () => {
           <p className="text-xl font-bold text-slate-900 dark:text-white mt-1">{results?.time_taken_seconds ?? 0}s</p>
         </div>
       </div>
+
+      {/* Topic-Wise Performance Breakdown */}
+      {results?.topic_performance && results.topic_performance.length > 0 && (
+        <div className="rounded-xl border border-slate-200/80 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard p-6 shadow-sm space-y-3">
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-primary-600" />
+            Topic-Wise Performance Breakdown
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 uppercase font-bold border-b border-slate-200 dark:border-surface-darkBorder">
+                <tr>
+                  <th className="py-2.5 px-3">Topic</th>
+                  <th className="py-2.5 px-3">Correct / Total</th>
+                  <th className="py-2.5 px-3">Accuracy</th>
+                  <th className="py-2.5 px-3">Mastery Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-surface-darkBorder">
+                {results.topic_performance.map((tp, i) => (
+                  <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/20">
+                    <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">{tp.topic}</td>
+                    <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">{tp.correct} / {tp.total}</td>
+                    <td className="py-2.5 px-3 font-mono font-bold text-slate-900 dark:text-white">{tp.accuracy}%</td>
+                    <td className="py-2.5 px-3">
+                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                        tp.status === 'Mastered'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                          : tp.status === 'In Review'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                          : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                      }`}>
+                        {tp.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Recommendations Box */}
       {results?.recommendations && results.recommendations.length > 0 && (

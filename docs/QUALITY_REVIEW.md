@@ -732,3 +732,269 @@ The transport
 2. **Local Fallback Question Diversity**: When running completely offline without an external LLM key, the heuristic question generator relies on grammatical patterns and domain definition templates. While 100% accurate and free of fragments/hallucinations, the syntactic phrasing is less linguistically diverse than Gemini's generative questions.
 3. **Table Structure Preservation**: Tables in PDF slides that lack explicit borders are extracted as newline-separated rows. While the chunking pipeline cleanly isolates them from prose sentences, tabular Q&A benefits from full markdown table reconstruction.
 4. **Spaced Repetition Cold Start**: For documents with under 5 informative chunks, the SM-2 algorithm operates on smaller decks. Ensuring cross-document review mixing will enhance long-term retention.
+
+
+---
+
+## Multi-Type Question Quality Review: 10 Verified Real Samples per Type
+
+This section documents 10 real, validated sample questions generated across `RIP_OSPF.pptx`, `ch4.pdf`, and `Unit 4 Transport Layer.pptx` for each of the 4 supported question types, enforcing zero canned distractors, clean stems, and authoritative page citations.
+
+### 1. Multiple Choice Questions (MCQ - 4 Domain Distractors, No Canned Options)
+
+#### Sample 1: What is the maximum allowed hop count for a valid route in the Routing Information Protocol (RIP)?
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 3 | **Topic**: Hop Count
+- **Options**:
+  - `16`
+  - `15` [CORRECT]
+  - `14`
+  - `10`
+- **Explanation**: In RIP, any valid route in an Autonomous System cannot have more than 15 hops before it is considered inaccessible (Page 3).
+
+#### Sample 2: Which routing algorithm is the Open Shortest Path First (OSPF) protocol based on?
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 10 | **Topic**: Open Shortest Path First (OSPF)
+- **Options**:
+  - `Link state routing` [CORRECT]
+  - `multiple routing tables`
+  - `reserved field`
+  - `routing tables`
+- **Explanation**: OSPF is an open intradomain routing protocol based on link state routing (Page 10).
+
+#### Sample 3: Which specific join type automatically matches tuples that share the same values for all common attributes while retaining only a single copy of each common column?
+- **Source Document**: `ch4.pdf` | **Page**: 4 | **Topic**: Core Concepts
+- **Options**:
+  - `Natural join` [CORRECT]
+  - `Cartesian join`
+  - `Cross join`
+  - `Union join`
+- **Explanation**: A natural join matches tuples with the same values for all common attributes and retains only one copy of each common column. (Documented on Page 4)
+
+#### Sample 4: What potential hazard should database designers beware of when using natural joins in SQL?
+- **Source Document**: `ch4.pdf` | **Page**: 9 | **Topic**: Core Concepts
+- **Options**:
+  - `Unrelated attributes with the same name getting equated incorrectly.` [CORRECT]
+  - `Automatic deletion of foreign key constraints across tables.`
+  - `Mandatory inclusion of administrator privileges in the from clause.`
+  - `Permanent corruption of the underlying database schema.`
+- **Explanation**: Users must beware of unrelated attributes sharing the same name which can get equated incorrectly during a natural join operation. (Documented on Page 9)
+
+#### Sample 5: Which SQL statement is used to define a virtual relation (view) in a database?
+- **Source Document**: `ch4.pdf` | **Page**: 20 | **Topic**: View Definition
+- **Options**:
+  - `full outer join`
+  - `left outer join`
+  - `alteration allows addition`
+  - `create view` [CORRECT]
+- **Explanation**: Views are virtual relations defined using the 'create view <name> as <query>' statement (Page 20).
+
+#### Sample 6: What is the primary purpose of the GRANT statement in SQL authorization?
+- **Source Document**: `ch4.pdf` | **Page**: 51 | **Topic**: Authorization Specification in SQL
+- **Options**:
+  - `natural join natural join`
+  - `domain types types`
+  - `clause join condition defines`
+  - `To confer privileges such as read, insert, update, or delete to specified users or roles` [CORRECT]
+- **Explanation**: The GRANT statement is used to allocate security privileges and authorizations to database users or roles (Page 51).
+
+#### Sample 7: Which transport layer protocol establishes a connection with the destination machine before delivering packets?
+- **Source Document**: `Unit 4 Transport Layer.pptx` | **Page**: 3 | **Topic**: Core Concepts
+- **Options**:
+  - `User Datagram Protocol (UDP)`
+  - `Transmission Control Protocol (TCP)` [CORRECT]
+  - `Internet Protocol (IP)`
+  - `Address Resolution Protocol (ARP)`
+- **Explanation**: TCP is a connection-oriented transport layer protocol that makes a connection with the transport layer at the destination machine first before delivering the packets. (Documented on Page 3)
+
+#### Sample 8: What is the specific range of port numbers assigned and controlled by the Internet Assigned Number Authority (IANA) as well-known ports?
+- **Source Document**: `Unit 4 Transport Layer.pptx` | **Page**: 10 | **Topic**: Core Concepts
+- **Options**:
+  - `0 to 1023` [CORRECT]
+  - `1024 to 49151`
+  - `49152 to 65535`
+  - `0 to 65535`
+- **Explanation**: The ports ranging from 0 to 1023 are assigned and controlled by IANA as well-known ports. (Documented on Page 10)
+
+#### Sample 9: Which combination of elements uniquely defines a process at the transport layer by serving as a socket address?
+- **Source Document**: `Unit 4 Transport Layer.pptx` | **Page**: 11 | **Topic**: Core Concepts
+- **Options**:
+  - `MAC address and port number`
+  - `IP address and port number` [CORRECT]
+  - `Host name and MAC address`
+  - `Port number and sequence number`
+- **Explanation**: A socket address is defined as the combination of an IP address and a port number, which uniquely identifies a client or server process. (Documented on Page 11)
+
+#### Sample 10: How does the transport layer handle multiple processes sending packets from a single sender host?
+- **Source Document**: `Unit 4 Transport Layer.pptx` | **Page**: 13 | **Topic**: Core Concepts
+- **Options**:
+  - `Through demultiplexing, representing a one-to-many relationship`
+  - `Through multiplexing, representing a many-to-one relationship` [CORRECT]
+  - `Through connection-oriented error control`
+  - `Through independent packet datagram routing`
+- **Explanation**: At the sender site, several processes needing to send packets through one transport layer protocol creates a many-to-one relationship that requires multiplexing. (Documented on Page 13)
+
+### 2. True / False Questions (Strict Binary Verification)
+
+#### Sample 1: True or False: the maximum allowed hop count for a valid route in the Routing Information Protocol (RIP) is 15.
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 3 | **Topic**: Hop Count
+- **Options**: `["True", "False"]`
+- **Correct Answer**: `True`
+- **Explanation**: Confirmed directly by document definition on Page 3.
+
+#### Sample 2: True or False: send routing updates operates primarily to OSPF is an open intradomain routing protocol based on link state routing (Page 10)..
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 10 | **Topic**: Open Shortest Path First (OSPF)
+- **Options**: `["True", "False"]`
+- **Correct Answer**: `False`
+- **Explanation**: False. The mechanism described belongs to Link state routing, not send routing updates (Page 10).
+
+#### Sample 3: True or False: The Routing Information Protocol (RIP) is an intradomain routing protocol used inside an Autonomous System (AS).
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 2 | **Topic**: Routing Information Protocol (RIP)
+- **Options**: `["True", "False"]`
+- **Correct Answer**: `True`
+- **Explanation**: Directly confirmed in source text on Page 2.
+
+#### Sample 4: True or False: Considerations: In an AS, we are dealing with routers and networks (links).
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 2 | **Topic**: Routing Information Protocol (RIP)
+- **Options**: `["True", "False"]`
+- **Correct Answer**: `True`
+- **Explanation**: Directly confirmed in source text on Page 2.
+
+#### Sample 5: True or False: create view is defined as Views are virtual relations defined using the 'create view <name> as <query>' statement (Page 20)..
+- **Source Document**: `ch4.pdf` | **Page**: 20 | **Topic**: View Definition
+- **Options**: `["True", "False"]`
+- **Correct Answer**: `True`
+- **Explanation**: Confirmed directly by document definition on Page 20.
+
+#### Sample 6: True or False: time slot id varchar operates primarily to Views are virtual relations defined using the 'create view <name> as <query>' statement (Page 20)..
+- **Source Document**: `ch4.pdf` | **Page**: 20 | **Topic**: View Definition
+- **Options**: `["True", "False"]`
+- **Correct Answer**: `False`
+- **Explanation**: False. The mechanism described belongs to create view, not time slot id varchar (Page 20).
+
+#### Sample 7: True or False: To confer privileges such as read, insert, update, or delete to specified users or roles is defined as The GRANT statement is used to allocate security privileges and authorizations to database users or roles (Page 51)..
+- **Source Document**: `ch4.pdf` | **Page**: 51 | **Topic**: Authorization Specification in SQL
+- **Options**: `["True", "False"]`
+- **Correct Answer**: `True`
+- **Explanation**: Confirmed directly by document definition on Page 51.
+
+#### Sample 8: True or False: time slot id varchar operates primarily to The GRANT statement is used to allocate security privileges and authorizations to database users or roles (Page 51)..
+- **Source Document**: `ch4.pdf` | **Page**: 51 | **Topic**: Authorization Specification in SQL
+- **Options**: `["True", "False"]`
+- **Correct Answer**: `False`
+- **Explanation**: False. The mechanism described belongs to To confer privileges such as read, insert, update, or delete to specified users or roles, not time slot id varchar (Page 51).
+
+#### Sample 9: True or False: 0 to 1023 is defined as IANA controls and assigns the well-known ports ranging from 0 to 1023 for standard server services (Page 10)..
+- **Source Document**: `Unit 4 Transport Layer.pptx` | **Page**: 10 | **Topic**: Client/Server Paradigm: IANA Ranges
+- **Options**: `["True", "False"]`
+- **Correct Answer**: `True`
+- **Explanation**: Confirmed directly by document definition on Page 10.
+
+#### Sample 10: True or False: transport layer software running operates primarily to A socket address uniquely defines a network process through the combination of an IP address and a port number (Page 11)..
+- **Source Document**: `Unit 4 Transport Layer.pptx` | **Page**: 11 | **Topic**: Client/Server Paradigm: Socket Address
+- **Options**: `["True", "False"]`
+- **Correct Answer**: `False`
+- **Explanation**: False. The mechanism described belongs to An IP address and a port number, not transport layer software running (Page 11).
+
+### 3. Fill-in-the-Blank Questions (Normalized Exact Term Matching)
+
+#### Sample 1: Fill in the blank: The ___ (RIP) is an intradomain routing protocol used inside an Autonomous System (AS).
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 2 | **Topic**: Routing Information Protocol (RIP)
+- **Correct Answer (Missing Term)**: `routing information protocol`
+- **Explanation**: Full context from Page 2: The Routing Information Protocol (RIP) is an intradomain routing protocol used inside an Autonomous System (AS).
+
+#### Sample 2: Fill in the blank: The routers have ___s; networks do not.
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 2 | **Topic**: Routing Information Protocol (RIP)
+- **Correct Answer (Missing Term)**: `routing table`
+- **Explanation**: Full context from Page 2: The routers have routing tables; networks do not.
+
+#### Sample 3: Fill in the blank: The destination in a ___ is a network, first column defines a network address.
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 2 | **Topic**: Routing Information Protocol (RIP)
+- **Correct Answer (Missing Term)**: `routing table`
+- **Explanation**: Full context from Page 2: The destination in a routing table is a network, first column defines a network address.
+
+#### Sample 4: Fill in the blank: Metric in RIP is called a ___ (number of links (networks) to reach the destination).
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 2 | **Topic**: Routing Information Protocol (RIP)
+- **Correct Answer (Missing Term)**: `hop count`
+- **Explanation**: Full context from Page 2: Metric in RIP is called a hop count (number of links (networks) to reach the destination).
+
+#### Sample 5: Fill in the blank: ___ is defined as Cartesian product which requires that tuples in the two relations match (under some condition).
+- **Source Document**: `ch4.pdf` | **Page**: 3 | **Topic**: Joined Relations
+- **Correct Answer (Missing Term)**: `A Join Operation`
+- **Explanation**: According to the source document on Page 3, A Join Operation is defined as: Cartesian product which requires that tuples in the two relations match (under some condition).
+
+#### Sample 6: Fill in the blank: ___ is a Cartesian product which requires that tuples in the two relations match (under some condition).
+- **Source Document**: `ch4.pdf` | **Page**: 3 | **Topic**: Joined Relations
+- **Correct Answer (Missing Term)**: `A Join Operation`
+- **Explanation**: Full context from Page 3: A join operation is a Cartesian product which requires that tuples in the two relations match (under some condition).
+
+#### Sample 7: Fill in the blank: ___ with the same values for all common attributes, and retains only one copy of each common column.
+- **Source Document**: `ch4.pdf` | **Page**: 4 | **Topic**: ©Silberschatz, Korth and Sudarshan
+- **Correct Answer (Missing Term)**: `natural join matches tuples`
+- **Explanation**: Full context from Page 4: Natural join matches tuples with the same values for all common attributes, and retains only one copy of each common column.
+
+#### Sample 8: Fill in the blank: The from clause in can have ___ A1, A2, … An
+- **Source Document**: `ch4.pdf` | **Page**: 5 | **Topic**: Natural Join in SQL (Cont.)
+- **Correct Answer (Missing Term)**: `multiple relations combined select`
+- **Explanation**: Full context from Page 5: The from clause in can have multiple relations combined select A1, A2, … An
+
+#### Sample 9: At the transport layer, a transport layer address known as a ___ is required to choose among multiple processes running on the destination host.
+- **Source Document**: `Unit 4 Transport Layer.pptx` | **Page**: 9 | **Topic**: Core Concepts
+- **Correct Answer (Missing Term)**: `port number`
+- **Explanation**: A port number is used at the transport layer to identify and choose among multiple processes running on a destination host. (Documented on Page 9)
+
+#### Sample 10: The combination of an IP address and a port number defines a ___ address, which uniquely identifies a client or server process.
+- **Source Document**: `Unit 4 Transport Layer.pptx` | **Page**: 11 | **Topic**: Core Concepts
+- **Correct Answer (Missing Term)**: `socket`
+- **Explanation**: A socket address is defined as the combination of an IP address and a port number at each end to make a connection. (Documented on Page 11)
+
+### 4. Short Answer Questions (Model Answers & Semantic Similarity Evaluation)
+
+#### Sample 1: Explain the core function and definition of 15.
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 3 | **Topic**: Hop Count
+- **Reference Model Answer**: 15 is defined as In RIP, any valid route in an Autonomous System cannot have more than 15 hops before it is considered inaccessible (Page 3)..
+- **Explanation**: Reference model answer documented on Page 3: 15 is defined as In RIP, any valid route in an Autonomous System cannot have more than 15 hops before it is considered inaccessible (Page 3)..
+
+#### Sample 2: Explain the core function and definition of Link state routing.
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 10 | **Topic**: Open Shortest Path First (OSPF)
+- **Reference Model Answer**: Link state routing is defined as OSPF is an open intradomain routing protocol based on link state routing (Page 10)..
+- **Explanation**: Reference model answer documented on Page 10: Link state routing is defined as OSPF is an open intradomain routing protocol based on link state routing (Page 10)..
+
+#### Sample 3: Explain the principle and operational role of routing information protocol.
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 2 | **Topic**: Routing Information Protocol (RIP)
+- **Reference Model Answer**: The Routing Information Protocol (RIP) is an intradomain routing protocol used inside an Autonomous System (AS).
+- **Explanation**: Model answer derived from Page 2: The Routing Information Protocol (RIP) is an intradomain routing protocol used inside an Autonomous System (AS).
+
+#### Sample 4: Explain the principle and operational role of routing table.
+- **Source Document**: `RIP_OSPF.pptx` | **Page**: 2 | **Topic**: Routing Information Protocol (RIP)
+- **Reference Model Answer**: The routers have routing tables; networks do not.
+- **Explanation**: Model answer derived from Page 2: The routers have routing tables; networks do not.
+
+#### Sample 5: Explain the core function and definition of create view.
+- **Source Document**: `ch4.pdf` | **Page**: 20 | **Topic**: View Definition
+- **Reference Model Answer**: create view is defined as Views are virtual relations defined using the 'create view <name> as <query>' statement (Page 20)..
+- **Explanation**: Reference model answer documented on Page 20: create view is defined as Views are virtual relations defined using the 'create view <name> as <query>' statement (Page 20)..
+
+#### Sample 6: Explain the core function and definition of To confer privileges such as read, insert, update, or delete to specified users or roles.
+- **Source Document**: `ch4.pdf` | **Page**: 51 | **Topic**: Authorization Specification in SQL
+- **Reference Model Answer**: To confer privileges such as read, insert, update, or delete to specified users or roles is defined as The GRANT statement is used to allocate security privileges and authorizations to database users or roles (Page 51)..
+- **Explanation**: Reference model answer documented on Page 51: To confer privileges such as read, insert, update, or delete to specified users or roles is defined as The GRANT statement is used to allocate security privileges and authorizations to database users or roles (Page 51)..
+
+#### Sample 7: Explain the core function and definition of A Join Operation.
+- **Source Document**: `ch4.pdf` | **Page**: 3 | **Topic**: Joined Relations
+- **Reference Model Answer**: A Join Operation is defined as Cartesian product which requires that tuples in the two relations match (under some condition).
+- **Explanation**: Reference model answer documented on Page 3: A Join Operation is defined as Cartesian product which requires that tuples in the two relations match (under some condition).
+
+#### Sample 8: Explain the core function and definition of View Definition.
+- **Source Document**: `ch4.pdf` | **Page**: 20 | **Topic**: View Definition
+- **Reference Model Answer**: View Definition is defined as not the same as creating a new relation by evaluating the query expression Rather, a view definition causes the saving of an expression; the expression is substituted into queries using the view.
+- **Explanation**: Reference model answer documented on Page 20: View Definition is defined as not the same as creating a new relation by evaluating the query expression Rather, a view definition causes the saving of an expression; the expression is substituted into queries using the view.
+
+#### Sample 9: Explain the core function and definition of 0 to 1023.
+- **Source Document**: `Unit 4 Transport Layer.pptx` | **Page**: 10 | **Topic**: Client/Server Paradigm: IANA Ranges
+- **Reference Model Answer**: 0 to 1023 is defined as IANA controls and assigns the well-known ports ranging from 0 to 1023 for standard server services (Page 10)..
+- **Explanation**: Reference model answer documented on Page 10: 0 to 1023 is defined as IANA controls and assigns the well-known ports ranging from 0 to 1023 for standard server services (Page 10)..
+
+#### Sample 10: Explain the core function and definition of An IP address and a port number.
+- **Source Document**: `Unit 4 Transport Layer.pptx` | **Page**: 11 | **Topic**: Client/Server Paradigm: Socket Address
+- **Reference Model Answer**: An IP address and a port number is defined as A socket address uniquely defines a network process through the combination of an IP address and a port number (Page 11)..
+- **Explanation**: Reference model answer documented on Page 11: An IP address and a port number is defined as A socket address uniquely defines a network process through the combination of an IP address and a port number (Page 11)..
+

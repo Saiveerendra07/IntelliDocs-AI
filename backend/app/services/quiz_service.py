@@ -15,12 +15,14 @@ from backend.app.db.models.document import Document
 from backend.app.schemas.quiz import (
     QuizCreateRequest,
     QuizSubmitRequest,
+    SingleQuizResponseInput,
     QuizOut,
     QuizQuestionOut,
     QuizResultResponse,
     QuizQuestionResult,
     RecommendationItem,
 )
+from backend.app.nlp.evaluation import evaluate_quiz_answer
 
 
 class QuizService:
@@ -91,6 +93,83 @@ class QuizService:
         self.db.refresh(attempt)
         return attempt
 
+    def record_single_response(
+        self,
+        user_id: uuid.UUID,
+        attempt_id: uuid.UUID,
+        req: SingleQuizResponseInput,
+    ) -> Dict[str, Any]:
+        """
+        Server-side single question answer evaluation during interactive one-by-one quiz.
+        Evaluates answer, persists response to quiz_responses, and returns immediate feedback.
+        """
+        attempt = self.db.execute(
+            select(QuizAttempt).where(QuizAttempt.id == attempt_id, QuizAttempt.user_id == user_id)
+        ).scalar_one_or_none()
+        if not attempt:
+            raise ValueError(f"Attempt {attempt_id} not found.")
+
+        # Find matching QuizQuestion and GeneratedQuestion
+        qq_row = self.db.execute(
+            select(QuizQuestion, GeneratedQuestion)
+            .join(GeneratedQuestion, QuizQuestion.generated_question_id == GeneratedQuestion.id)
+            .where(
+                QuizQuestion.quiz_id == attempt.quiz_id,
+                (QuizQuestion.id == req.quiz_question_id) | (GeneratedQuestion.id == req.quiz_question_id),
+            )
+        ).first()
+
+        if not qq_row:
+            raise ValueError(f"Quiz question {req.quiz_question_id} not found in this quiz.")
+        qq, gq = qq_row
+
+        # Evaluate answer on the server using NLP evaluation rules
+        eval_result = evaluate_quiz_answer(
+            question_type=gq.type,
+            user_answer=req.selected_answer,
+            correct_answer=gq.correct_answer,
+            options=gq.options or [],
+            question_text=gq.question,
+            explanation=gq.explanation,
+        )
+
+        # Check if response already exists for this attempt and question
+        existing_resp = self.db.execute(
+            select(QuizResponse).where(
+                QuizResponse.attempt_id == attempt.id,
+                QuizResponse.quiz_question_id == qq.id,
+            )
+        ).scalar_one_or_none()
+
+        if existing_resp:
+            existing_resp.selected_answer = req.selected_answer
+            existing_resp.is_correct = eval_result["is_correct"]
+            existing_resp.marked_for_review = req.marked_for_review
+        else:
+            db_resp = QuizResponse(
+                id=uuid.uuid4(),
+                attempt_id=attempt.id,
+                quiz_question_id=qq.id,
+                selected_answer=req.selected_answer,
+                is_correct=eval_result["is_correct"],
+                marked_for_review=req.marked_for_review,
+            )
+            self.db.add(db_resp)
+
+        self.db.commit()
+
+        return {
+            "quiz_question_id": gq.id,
+            "is_correct": eval_result["is_correct"],
+            "correct_answer": gq.correct_answer,
+            "explanation": gq.explanation,
+            "source_page": gq.page,
+            "score": eval_result.get("score", 1.0 if eval_result["is_correct"] else 0.0),
+            "feedback": eval_result.get("feedback"),
+            "key_points_covered": eval_result.get("key_points_covered", []),
+            "key_points_missed": eval_result.get("key_points_missed", []),
+        }
+
     def submit_attempt(
         self,
         user_id: uuid.UUID,
@@ -103,7 +182,6 @@ class QuizService:
         if not attempt:
             raise ValueError(f"Attempt {attempt_id} not found.")
 
-        quiz = self.db.execute(select(Quiz).where(Quiz.id == attempt.quiz_id)).scalar_one_or_none()
         qqs = self.db.execute(
             select(QuizQuestion, GeneratedQuestion)
             .join(GeneratedQuestion, QuizQuestion.generated_question_id == GeneratedQuestion.id)
@@ -112,57 +190,82 @@ class QuizService:
         ).all()
 
         q_map = {str(gq.id): (qq, gq) for qq, gq in qqs}
-        # Also map by QuizQuestion.id
         qq_id_map = {str(qq.id): (qq, gq) for qq, gq in qqs}
 
+        # If explicit responses passed in payload, evaluate/record each
+        if req.responses:
+            for resp in req.responses:
+                pair = q_map.get(str(resp.quiz_question_id)) or qq_id_map.get(str(resp.quiz_question_id))
+                if not pair:
+                    continue
+                qq, gq = pair
+
+                eval_result = evaluate_quiz_answer(
+                    question_type=gq.type,
+                    user_answer=resp.selected_answer,
+                    correct_answer=gq.correct_answer,
+                    options=gq.options or [],
+                    question_text=gq.question,
+                    explanation=gq.explanation,
+                )
+
+                existing = self.db.execute(
+                    select(QuizResponse).where(
+                        QuizResponse.attempt_id == attempt.id,
+                        QuizResponse.quiz_question_id == qq.id,
+                    )
+                ).scalar_one_or_none()
+
+                if existing:
+                    existing.selected_answer = resp.selected_answer
+                    existing.is_correct = eval_result["is_correct"]
+                    existing.marked_for_review = resp.marked_for_review
+                else:
+                    self.db.add(QuizResponse(
+                        id=uuid.uuid4(),
+                        attempt_id=attempt.id,
+                        quiz_question_id=qq.id,
+                        selected_answer=resp.selected_answer,
+                        is_correct=eval_result["is_correct"],
+                        marked_for_review=resp.marked_for_review,
+                    ))
+            self.db.commit()
+
+        # Fetch all recorded responses for this attempt
+        saved_responses = self.db.execute(
+            select(QuizResponse, QuizQuestion, GeneratedQuestion)
+            .join(QuizQuestion, QuizResponse.quiz_question_id == QuizQuestion.id)
+            .join(GeneratedQuestion, QuizQuestion.generated_question_id == GeneratedQuestion.id)
+            .where(QuizResponse.attempt_id == attempt.id)
+            .order_by(QuizQuestion.position.asc())
+        ).all()
+
         correct_count = 0
-        total_count = len(req.responses)
         detailed_results = []
         topic_scores = {}
 
-        for resp in req.responses:
-            # lookup by quiz_question_id or generated_question_id
-            pair = q_map.get(str(resp.quiz_question_id)) or qq_id_map.get(str(resp.quiz_question_id))
-            if not pair:
-                continue
-            qq, gq = pair
-
-            is_correct = False
-            if resp.selected_answer is not None:
-                user_clean = resp.selected_answer.strip().lower()
-                target_clean = gq.correct_answer.strip().lower()
-                is_correct = (user_clean == target_clean)
-
-            if is_correct:
+        for qr, qq, gq in saved_responses:
+            if qr.is_correct:
                 correct_count += 1
 
             topic = gq.topic or "General"
             if topic not in topic_scores:
                 topic_scores[topic] = {"correct": 0, "total": 0}
             topic_scores[topic]["total"] += 1
-            if is_correct:
+            if qr.is_correct:
                 topic_scores[topic]["correct"] += 1
-
-            db_resp = QuizResponse(
-                id=uuid.uuid4(),
-                attempt_id=attempt.id,
-                quiz_question_id=qq.id,
-                selected_answer=resp.selected_answer,
-                is_correct=is_correct,
-                marked_for_review=resp.marked_for_review,
-            )
-            self.db.add(db_resp)
 
             detailed_results.append({
                 "quiz_question_id": gq.id,
                 "question_text": gq.question,
-                "selected_answer": resp.selected_answer,
+                "selected_answer": qr.selected_answer,
                 "correct_answer": gq.correct_answer,
-                "is_correct": is_correct,
+                "is_correct": qr.is_correct,
                 "explanation": gq.explanation,
                 "source_page": gq.page,
             })
 
+        total_count = max(len(qqs), len(detailed_results))
         accuracy = round((correct_count / max(1, total_count)) * 100, 2)
         attempt.status = "completed"
         attempt.score = float(correct_count)
@@ -172,11 +275,20 @@ class QuizService:
         attempt.submitted_at = datetime.now(timezone.utc)
         self.db.commit()
 
-        weak_topics = [
-            {"topic": t, "accuracy": round((v["correct"] / v["total"]) * 100, 1)}
-            for t, v in topic_scores.items()
-            if (v["correct"] / v["total"]) < 0.6
-        ]
+        topic_performance = []
+        weak_topics = []
+        for t, v in topic_scores.items():
+            t_acc = round((v["correct"] / max(1, v["total"])) * 100, 1)
+            status_label = "Mastered" if t_acc >= 80 else ("In Review" if t_acc >= 60 else "Weak")
+            topic_performance.append({
+                "topic": t,
+                "correct": v["correct"],
+                "total": v["total"],
+                "accuracy": t_acc,
+                "status": status_label,
+            })
+            if t_acc < 60:
+                weak_topics.append({"topic": t, "accuracy": t_acc})
 
         return {
             "attempt_id": attempt.id,
@@ -185,6 +297,7 @@ class QuizService:
             "total": total_count,
             "accuracy": accuracy,
             "time_taken_seconds": req.time_taken_seconds,
+            "topic_performance": topic_performance,
             "questions": detailed_results,
             "weak_topics": weak_topics,
         }
@@ -224,11 +337,20 @@ class QuizService:
                 "source_page": gq.page,
             })
 
-        weak_topics = [
-            {"topic": t, "accuracy": round((v["correct"] / v["total"]) * 100, 1)}
-            for t, v in topic_scores.items()
-            if (v["correct"] / v["total"]) < 0.6
-        ]
+        topic_performance = []
+        weak_topics = []
+        for t, v in topic_scores.items():
+            t_acc = round((v["correct"] / max(1, v["total"])) * 100, 1)
+            status_label = "Mastered" if t_acc >= 80 else ("In Review" if t_acc >= 60 else "Weak")
+            topic_performance.append({
+                "topic": t,
+                "correct": v["correct"],
+                "total": v["total"],
+                "accuracy": t_acc,
+                "status": status_label,
+            })
+            if t_acc < 60:
+                weak_topics.append({"topic": t, "accuracy": t_acc})
 
         return {
             "attempt_id": attempt.id,
@@ -237,6 +359,7 @@ class QuizService:
             "total": attempt.total,
             "accuracy": attempt.accuracy,
             "time_taken_seconds": attempt.time_taken_seconds,
+            "topic_performance": topic_performance,
             "questions": questions_detail,
             "weak_topics": weak_topics,
         }
